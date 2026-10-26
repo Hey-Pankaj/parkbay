@@ -50,23 +50,26 @@ The platform features an authentic architectural live bay floor plan, ultrasonic
 
 ---
 
-## 📁 Repository Structure (Flat Root)
+## 📁 Repository Structure
 
 ```text
 parkbay/
-├── app.py                 # Flask REST backend server & static router
-├── database.py            # SQLAlchemy engine (MySQL + SQLite fallback)
-├── models.py              # User, Facility, Slot, Booking, Sensor models
-├── schema_mysql.sql       # Pure MySQL relational schema DDL
-├── seed_data.py           # Auto-seeder for facilities, bays, and users
-├── requirements.txt       # Python backend dependencies
-├── package.json           # Node / React dependencies and build scripts
-├── vite.config.js         # Vite configuration with API proxy to Flask
-├── tailwind.config.js     # Tailwind CSS styles and palette configuration
-├── index.html             # Application entrypoint
-├── src/                   # React components, pages, contexts, services
-├── public/                # Static assets, branding icons, parking background
-└── README.md              # Project documentation
+├── backend/
+│   ├── app.py                 # Flask REST backend server
+│   ├── database.py            # SQLAlchemy engine (MySQL + SQLite fallback)
+│   ├── models.py              # User, Facility, Slot, Booking, Sensor models
+│   ├── schema_mysql.sql       # Pure MySQL relational schema DDL
+│   ├── seed_data.py           # Auto-seeder for facilities, bays, and users
+│   ├── requirements.txt       # Python backend dependencies
+│   └── .env.example           # Environment configuration template
+├── frontend/
+│   ├── src/                   # React components, pages, contexts, services
+│   ├── public/                # Static assets, branding icons, parking background
+│   ├── package.json           # Node / React dependencies and build scripts
+│   ├── vite.config.js         # Vite configuration with API proxy to Flask
+│   ├── tailwind.config.js     # Tailwind CSS styles and palette configuration
+│   └── index.html             # Application entrypoint
+└── README.md                  # Project documentation
 ```
 
 ---
@@ -76,6 +79,8 @@ parkbay/
 ### 1. Install Backend Dependencies & Launch Flask
 
 ```bash
+cd backend
+
 # Install Python packages
 pip install -r requirements.txt
 
@@ -90,6 +95,8 @@ python app.py
 In a new terminal window:
 
 ```bash
+cd frontend
+
 # Install Node dependencies
 npm install
 
