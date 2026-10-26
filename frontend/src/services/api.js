@@ -182,6 +182,63 @@ function handleFallback(endpoint, options) {
     return { total_facilities: 3, total_slots: 60, total_bookings: 18, active_bookings: 6, today_revenue: 4320.0, occupancy_rate: 35.0 };
   }
 
+  // Admin: Get all users
+  if (endpoint.startsWith('/admin/users') && method === 'GET') {
+    let users = JSON.parse(localStorage.getItem('parkbay_local_users') || '[]');
+    if (users.length === 0) {
+      users = [
+        { id: 1, full_name: 'ParkBay Admin Officer', email: 'admin@parkbay.com', role: 'admin', phone: '+91 80 4123 5678', created_at: new Date(Date.now() - 30 * 86400000).toISOString(), total_bookings: 0, active_bookings: 0 },
+        { id: 2, full_name: 'Alex Driver', email: 'driver@parkbay.com', role: 'driver', phone: '+91 98765 43210', created_at: new Date(Date.now() - 15 * 86400000).toISOString(), total_bookings: 4, active_bookings: 1 },
+        { id: 3, full_name: 'Priya Sharma', email: 'priya.sharma@corp.com', role: 'driver', phone: '+91 98450 11223', created_at: new Date(Date.now() - 10 * 86400000).toISOString(), total_bookings: 6, active_bookings: 0 },
+        { id: 4, full_name: 'Rahul Verma', email: 'rahul.verma@gmail.com', role: 'driver', phone: '+91 99001 88776', created_at: new Date(Date.now() - 5 * 86400000).toISOString(), total_bookings: 2, active_bookings: 0 }
+      ];
+      localStorage.setItem('parkbay_local_users', JSON.stringify(users));
+    }
+    return { users, total: users.length };
+  }
+
+  // Admin: Update user role
+  if (endpoint.match(/\/admin\/users\/(\d+)\/role/) && method === 'PUT') {
+    const match = endpoint.match(/\/admin\/users\/(\d+)\/role/);
+    const userId = Number(match[1]);
+    const users = JSON.parse(localStorage.getItem('parkbay_local_users') || '[]');
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      user.role = body.role || (user.role === 'admin' ? 'driver' : 'admin');
+      localStorage.setItem('parkbay_local_users', JSON.stringify(users));
+      return { ok: true, user, message: `User role updated to ${user.role.toUpperCase()}` };
+    }
+    return { error: 'User not found' };
+  }
+
+  // Admin: Create user
+  if (endpoint === '/admin/users' && method === 'POST') {
+    const users = JSON.parse(localStorage.getItem('parkbay_local_users') || '[]');
+    const newUser = {
+      id: Date.now(),
+      full_name: body.full_name || 'New User',
+      email: (body.email || '').toLowerCase(),
+      role: body.role || 'driver',
+      phone: body.phone || '',
+      created_at: new Date().toISOString(),
+      total_bookings: 0,
+      active_bookings: 0
+    };
+    users.unshift(newUser);
+    localStorage.setItem('parkbay_local_users', JSON.stringify(users));
+    return { ok: true, user: newUser, message: 'User created successfully!' };
+  }
+
+  // Admin: Delete user
+  if (endpoint.match(/\/admin\/users\/(\d+)/) && method === 'DELETE') {
+    const match = endpoint.match(/\/admin\/users\/(\d+)/);
+    const userId = Number(match[1]);
+    let users = JSON.parse(localStorage.getItem('parkbay_local_users') || '[]');
+    users = users.filter(u => u.id !== userId);
+    localStorage.setItem('parkbay_local_users', JSON.stringify(users));
+    return { ok: true, message: 'User deleted successfully.' };
+  }
+
   // ANPR camera scan simulation
   if (endpoint.startsWith('/camera/anpr/scan')) {
     return { access_granted: true, barrier_status: 'OPEN', message: `Welcome! Barrier Open for vehicle ${body.vehicle_number || 'KA01MJ4321'}` };
@@ -282,7 +339,7 @@ export const api = {
   joinWaitlist: (data) => 
     request('/waitlist', { method: 'POST', body: data }),
 
-  // Admin Dashboard
+  // Admin Dashboard & Allotments
   getAdminStats: () => 
     request('/admin/stats'),
 
@@ -291,6 +348,19 @@ export const api = {
 
   updateSlotStatus: (slotId, status) => 
     request(`/admin/slots/${slotId}/status`, { method: 'PUT', body: { status } }),
+
+  // Admin Users Configuration
+  getUsers: () => 
+    request('/admin/users'),
+
+  updateUserRole: (userId, role) => 
+    request(`/admin/users/${userId}/role`, { method: 'PUT', body: { role } }),
+
+  createUser: (userData) => 
+    request('/admin/users', { method: 'POST', body: userData }),
+
+  deleteUser: (userId) => 
+    request(`/admin/users/${userId}`, { method: 'DELETE' }),
 
   // Hardware / IoT Sensors & ANPR Camera Simulation
   getSensors: () => 

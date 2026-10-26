@@ -58,7 +58,8 @@ function MainApp() {
   useEffect(() => {
     if (user) {
       if (isAdmin) {
-        if (!['admin', 'iot-vision', 'explore', 'my-bookings'].includes(activeTab)) {
+        // Admins only access 'admin', 'iot-vision', and 'explore' (no my-bookings)
+        if (!['admin', 'iot-vision', 'explore'].includes(activeTab)) {
           setActiveTab('admin');
         }
       } else {
@@ -206,26 +207,37 @@ function MainApp() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-glass-card border border-white/10 rounded-3xl p-6 shadow-xl">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span className="text-xs uppercase font-bold tracking-widest text-emerald-400 font-mono">
-                    PARKBAY DRIVER DASHBOARD
+                  <span className={`w-2.5 h-2.5 rounded-full ${isAdmin ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`}></span>
+                  <span className={`text-xs uppercase font-bold tracking-widest ${isAdmin ? 'text-amber-400' : 'text-emerald-400'} font-mono`}>
+                    {isAdmin ? 'PARKBAY ADMINISTRATOR CONSOLE' : 'PARKBAY DRIVER DASHBOARD'}
                   </span>
                 </div>
                 <h1 className="text-2xl font-bold text-white tracking-tight">
-                  Welcome back, {user?.full_name || 'Driver'}!
+                  Welcome back, {user?.full_name || (isAdmin ? 'Admin' : 'Driver')}!
                 </h1>
                 <p className="text-xs text-slate-400">
-                  Select your destination facility, adjust your duration, and reserve your bay.
+                  {isAdmin 
+                    ? 'Oversee live bay occupancies, audit vehicle allotments, and manage user configurations.'
+                    : 'Select your destination facility, adjust your duration, and reserve your bay.'}
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setActiveTab('my-bookings')}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
-                >
-                  View My Passes
-                </button>
+                {isAdmin ? (
+                  <button
+                    onClick={() => setActiveTab('admin')}
+                    className="px-4 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 text-xs font-semibold transition-all"
+                  >
+                    Manage Allotments & Users
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setActiveTab('my-bookings')}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
+                  >
+                    View My Passes
+                  </button>
+                )}
               </div>
             </div>
 
@@ -249,8 +261,8 @@ function MainApp() {
           </div>
         )}
 
-        {/* My Bookings Page */}
-        {activeTab === 'my-bookings' && (
+        {/* My Bookings Page (Drivers only) */}
+        {activeTab === 'my-bookings' && !isAdmin && (
           <MyBookingsPage
             onGoToExplore={() => setActiveTab('explore')}
           />

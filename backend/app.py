@@ -745,6 +745,87 @@ def update_slot_status(slot_id):
         db.close()
 
 
+@app.get("/api/admin/users")
+def get_all_users():
+    db = SessionLocal()
+    try:
+        users = db.query(User).order_by(desc(User.created_at)).all()
+        results = []
+        for u in users:
+            d = u.to_dict()
+            d["total_bookings"] = db.query(Booking).filter(Booking.user_id == u.id).count()
+            d["active_bookings"] = db.query(Booking).filter(Booking.user_id == u.id, Booking.booking_status == "active").count()
+            results.append(d)
+        return jsonify({"users": results, "total": len(results)})
+    finally:
+        db.close()
+
+
+@app.put("/api/admin/users/<int:user_id>/role")
+def update_user_role(user_id):
+    data = request.get_json(silent=True) or {}
+    new_role = (data.get("role") or "").strip().lower()
+    if new_role not in ["driver", "admin"]:
+        return jsonify({"error": "Role must be 'driver' or 'admin'."}), 400
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return jsonify({"error": "User not found."}), 404
+        user.role = new_role
+        db.commit()
+        return jsonify({"ok": True, "user": user.to_dict(), "message": f"User role updated to {new_role.upper()}"})
+    finally:
+        db.close()
+
+
+@app.post("/api/admin/users")
+def admin_create_user():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("full_name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or "password123"
+    role = (data.get("role") or "driver").strip().lower()
+    phone = (data.get("phone") or "").strip()
+
+    if not name or not email:
+        return jsonify({"error": "Full name and email are required."}), 400
+
+    db = SessionLocal()
+    try:
+        if db.query(User).filter(User.email == email).first():
+            return jsonify({"error": "A user with this email already exists."}), 409
+
+        user = User(
+            full_name=name,
+            email=email,
+            password_hash=generate_password_hash(password),
+            role="admin" if role == "admin" else "driver",
+            phone=phone
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return jsonify({"ok": True, "user": user.to_dict(), "message": "User created successfully!"}), 201
+    finally:
+        db.close()
+
+
+@app.delete("/api/admin/users/<int:user_id>")
+def admin_delete_user(user_id):
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return jsonify({"error": "User not found."}), 404
+        db.delete(user)
+        db.commit()
+        return jsonify({"ok": True, "message": f"User {user.email} deleted successfully."})
+    finally:
+        db.close()
+
+
 # ==============================================================================
 # HARDWARE / IOT SENSOR & CAMERA ANPR SIMULATION ENDPOINTS
 # ==============================================================================
