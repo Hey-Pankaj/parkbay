@@ -13,7 +13,30 @@ from seed_data import seed_database
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "parkbay_secure_jwt_token_secret_key_2026")
+app.url_map.strict_slashes = False
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+class ApiPrefixMiddleware:
+    """Ensures requests both with /api and without /api are handled correctly on serverless platforms."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get("PATH_INFO", "")
+        if path and not path.startswith("/api") and path != "/" and not path.startswith("/static"):
+            environ["PATH_INFO"] = f"/api{path}"
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = ApiPrefixMiddleware(app.wsgi_app)
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
+        return response
 
 @app.after_request
 def after_request_cors(response):

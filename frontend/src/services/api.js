@@ -34,10 +34,16 @@ async function request(endpoint, options = {}) {
     }
 
     if (!response.ok) {
-      const errMsg = (data && data.error) || 
-        (response.status === 404 
-          ? `Backend API route not found at ${url}. Make sure your backend is deployed and VITE_API_URL is configured.` 
-          : `Server returned status ${response.status}`);
+      let errMsg = (data && data.error);
+      if (!errMsg) {
+        if (response.status === 405) {
+          errMsg = "Backend is not connected yet (HTTP 405). Please deploy the backend and set VITE_API_URL in your Vercel project settings.";
+        } else if (response.status === 404) {
+          errMsg = `Backend route not found at ${url}. Please verify your backend deployment.`;
+        } else {
+          errMsg = `Server returned status ${response.status}`;
+        }
+      }
       throw new Error(errMsg);
     }
 
