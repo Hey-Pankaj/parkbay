@@ -638,8 +638,10 @@ def get_admin_stats():
         now = datetime.utcnow()
         today_start = datetime(now.year, now.month, now.day)
 
-        total_facilities = db.query(ParkingFacility).count()
+        facilities = db.query(ParkingFacility).all()
+        total_facilities = len(facilities)
         total_slots = db.query(ParkingSlot).count()
+        total_bookings_count = db.query(Booking).count()
 
         active_bookings_count = db.query(Booking).filter(
             Booking.booking_status.in_(["confirmed", "active"]),
@@ -658,16 +660,53 @@ def get_admin_stats():
         ev_chargers_count = db.query(ParkingSlot).filter(ParkingSlot.has_ev_charger == True).count()
         maint_slots_count = db.query(ParkingSlot).filter(ParkingSlot.status == "maintenance").count()
 
+        # Area / Facility Breakdown
+        area_breakdown = []
+        for f in facilities:
+            f_slots = len(f.slots)
+            f_total_bookings = db.query(Booking).filter(Booking.facility_id == f.id).count()
+            f_active = db.query(Booking).filter(
+                Booking.facility_id == f.id,
+                Booking.booking_status.in_(["confirmed", "active"]),
+                Booking.start_time <= now,
+                Booking.end_time >= now
+            ).count()
+            f_maint = db.query(ParkingSlot).filter(
+                ParkingSlot.facility_id == f.id,
+                ParkingSlot.status != "available"
+            ).count()
+            f_avail = max(0, f_slots - f_active - f_maint)
+            f_rev_list = db.query(Booking.paid_amount).filter(
+                Booking.facility_id == f.id,
+                Booking.payment_status == "paid"
+            ).all()
+            f_revenue = sum(r[0] or 0.0 for r in f_rev_list)
+
+            area_breakdown.append({
+                "facility_id": f.id,
+                "name": f.name,
+                "city": f.city,
+                "area": f.address,
+                "total_slots": f_slots,
+                "total_bookings": f_total_bookings,
+                "active_bookings": f_active,
+                "available_slots": f_avail,
+                "occupancy_rate_pct": round((f_active / f_slots * 100), 1) if f_slots > 0 else 0.0,
+                "revenue": round(f_revenue, 2)
+            })
+
         return jsonify({
             "total_facilities": total_facilities,
             "total_slots": total_slots,
+            "total_bookings": total_bookings_count,
             "occupied_slots": active_bookings_count,
             "available_slots": max(0, total_slots - active_bookings_count - maint_slots_count),
             "occupancy_rate_pct": occupancy_pct,
             "today_revenue": round(revenue_sum, 2),
             "ev_slots_count": ev_chargers_count,
             "maintenance_slots_count": maint_slots_count,
-            "waitlist_count": len(WAITLIST)
+            "waitlist_count": len(WAITLIST),
+            "area_breakdown": area_breakdown
         })
     finally:
         db.close()
@@ -753,8 +792,10 @@ def get_all_users():
         results = []
         for u in users:
             d = u.to_dict()
-            d["total_bookings"] = db.query(Booking).filter(Booking.user_id == u.id).count()
-            d["active_bookings"] = db.query(Booking).filter(Booking.user_id == u.id, Booking.booking_status == "active").count()
+            u_bookings = db.query(Booking).filter(Booking.user_id == u.id).order_by(desc(Booking.created_at)).all()
+            d["total_bookings"] = len(u_bookings)
+            d["active_bookings"] = sum(1 for b in u_bookings if b.booking_status == "active")
+            d["bookings"] = [b.to_dict() for b in u_bookings]
             results.append(d)
         return jsonify({"users": results, "total": len(results)})
     finally:

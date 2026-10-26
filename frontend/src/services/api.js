@@ -179,20 +179,112 @@ function handleFallback(endpoint, options) {
 
   // Admin stats
   if (endpoint.startsWith('/admin/stats')) {
-    return { total_facilities: 3, total_slots: 60, total_bookings: 18, active_bookings: 6, today_revenue: 4320.0, occupancy_rate: 35.0 };
+    const bookings = JSON.parse(localStorage.getItem('parkbay_local_bookings') || '[]');
+    const totalBookings = Math.max(bookings.length, 24);
+    const activeBookings = Math.max(bookings.filter(b => b.booking_status === 'active').length, 8);
+    
+    const areaBreakdown = FALLBACK_FACILITIES.map(f => {
+      const fBookings = bookings.filter(b => Number(b.facility_id) === f.id);
+      const bookedCount = Math.max(fBookings.length, f.id === 1 ? 12 : f.id === 2 ? 8 : 4);
+      const activeCount = Math.max(fBookings.filter(b => b.booking_status === 'active').length, f.id === 1 ? 4 : f.id === 2 ? 3 : 1);
+      const avail = Math.max(0, f.total_slots - activeCount);
+      return {
+        facility_id: f.id,
+        name: f.name,
+        city: f.city,
+        area: f.address,
+        total_slots: f.total_slots,
+        total_bookings: bookedCount,
+        active_bookings: activeCount,
+        available_slots: avail,
+        occupancy_rate_pct: Math.round((activeCount / f.total_slots) * 100),
+        revenue: Math.round(bookedCount * f.base_rate_per_hour * 2.36)
+      };
+    });
+
+    return { 
+      total_facilities: FALLBACK_FACILITIES.length, 
+      total_slots: 60, 
+      total_bookings: totalBookings, 
+      occupied_slots: activeBookings, 
+      available_slots: 52, 
+      today_revenue: 5640.0, 
+      occupancy_rate_pct: 13.3,
+      area_breakdown: areaBreakdown
+    };
   }
 
   // Admin: Get all users
   if (endpoint.startsWith('/admin/users') && method === 'GET') {
     let users = JSON.parse(localStorage.getItem('parkbay_local_users') || '[]');
+    const allBookings = JSON.parse(localStorage.getItem('parkbay_local_bookings') || '[]');
+
     if (users.length === 0) {
       users = [
-        { id: 1, full_name: 'ParkBay Admin Officer', email: 'admin@parkbay.com', role: 'admin', phone: '+91 80 4123 5678', created_at: new Date(Date.now() - 30 * 86400000).toISOString(), total_bookings: 0, active_bookings: 0 },
-        { id: 2, full_name: 'Alex Driver', email: 'driver@parkbay.com', role: 'driver', phone: '+91 98765 43210', created_at: new Date(Date.now() - 15 * 86400000).toISOString(), total_bookings: 4, active_bookings: 1 },
-        { id: 3, full_name: 'Priya Sharma', email: 'priya.sharma@corp.com', role: 'driver', phone: '+91 98450 11223', created_at: new Date(Date.now() - 10 * 86400000).toISOString(), total_bookings: 6, active_bookings: 0 },
-        { id: 4, full_name: 'Rahul Verma', email: 'rahul.verma@gmail.com', role: 'driver', phone: '+91 99001 88776', created_at: new Date(Date.now() - 5 * 86400000).toISOString(), total_bookings: 2, active_bookings: 0 }
+        { 
+          id: 1, 
+          full_name: 'ParkBay Admin Officer', 
+          email: 'admin@parkbay.com', 
+          role: 'admin', 
+          phone: '+91 80 4123 5678', 
+          created_at: new Date(Date.now() - 30 * 86400000).toISOString(), 
+          total_bookings: 0, 
+          active_bookings: 0,
+          bookings: []
+        },
+        { 
+          id: 2, 
+          full_name: 'Alex Driver', 
+          email: 'driver@parkbay.com', 
+          role: 'driver', 
+          phone: '+91 98765 43210', 
+          created_at: new Date(Date.now() - 15 * 86400000).toISOString(), 
+          total_bookings: 4, 
+          active_bookings: 1,
+          bookings: [
+            { id: 101, booking_ref: 'PB-ALEX01', facility_name: 'ParkBay Central Galleria', slot_code: 'A-02', vehicle_number: 'KA01MJ4321', start_time: new Date().toISOString(), end_time: new Date(Date.now() + 7200000).toISOString(), total_hours: 2, paid_amount: 94.4, booking_status: 'active' },
+            { id: 102, booking_ref: 'PB-ALEX02', facility_name: 'ParkBay Tech Park Hub', slot_code: 'B-04', vehicle_number: 'KA01MJ4321', start_time: new Date(Date.now() - 86400000).toISOString(), end_time: new Date(Date.now() - 79200000).toISOString(), total_hours: 2, paid_amount: 82.6, booking_status: 'completed' },
+            { id: 103, booking_ref: 'PB-ALEX03', facility_name: 'ParkBay Airport Express', slot_code: 'C-01', vehicle_number: 'KA01MJ4321', start_time: new Date(Date.now() - 172800000).toISOString(), end_time: new Date(Date.now() - 158400000).toISOString(), total_hours: 4, paid_amount: 283.2, booking_status: 'completed' }
+          ]
+        },
+        { 
+          id: 3, 
+          full_name: 'Priya Sharma', 
+          email: 'priya.sharma@corp.com', 
+          role: 'driver', 
+          phone: '+91 98450 11223', 
+          created_at: new Date(Date.now() - 10 * 86400000).toISOString(), 
+          total_bookings: 2, 
+          active_bookings: 1,
+          bookings: [
+            { id: 104, booking_ref: 'PB-PRYA01', facility_name: 'ParkBay Central Galleria', slot_code: 'A-05', vehicle_number: 'MH02CB9988', start_time: new Date().toISOString(), end_time: new Date(Date.now() + 10800000).toISOString(), total_hours: 3, paid_amount: 141.6, booking_status: 'active' },
+            { id: 105, booking_ref: 'PB-PRYA02', facility_name: 'ParkBay Tech Park Hub', slot_code: 'B-01', vehicle_number: 'MH02CB9988', start_time: new Date(Date.now() - 259200000).toISOString(), end_time: new Date(Date.now() - 252000000).toISOString(), total_hours: 2, paid_amount: 82.6, booking_status: 'completed' }
+          ]
+        },
+        { 
+          id: 4, 
+          full_name: 'Rahul Verma', 
+          email: 'rahul.verma@gmail.com', 
+          role: 'driver', 
+          phone: '+91 99001 88776', 
+          created_at: new Date(Date.now() - 5 * 86400000).toISOString(), 
+          total_bookings: 1, 
+          active_bookings: 0,
+          bookings: [
+            { id: 106, booking_ref: 'PB-RAHL01', facility_name: 'ParkBay Airport Express', slot_code: 'A-01', vehicle_number: 'DL3CAA5544', start_time: new Date(Date.now() - 86400000).toISOString(), end_time: new Date(Date.now() - 72000000).toISOString(), total_hours: 4, paid_amount: 283.2, booking_status: 'completed' }
+          ]
+        }
       ];
       localStorage.setItem('parkbay_local_users', JSON.stringify(users));
+    } else {
+      // Ensure bookings array attached
+      users.forEach(u => {
+        if (!u.bookings) {
+          u.bookings = allBookings.filter(b => b.user_id === u.id);
+          u.total_bookings = u.bookings.length;
+          u.active_bookings = u.bookings.filter(b => b.booking_status === 'active').length;
+        }
+      });
     }
     return { users, total: users.length };
   }
