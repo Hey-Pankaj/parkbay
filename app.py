@@ -2,7 +2,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_, desc
@@ -804,6 +804,25 @@ def simulate_anpr_camera():
             }), 403
     finally:
         db.close()
+
+
+DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    if path.startswith("api/"):
+        return jsonify({"error": "Endpoint not found"}), 404
+    if os.path.exists(DIST_DIR):
+        file_path = os.path.join(DIST_DIR, path)
+        if path != "" and os.path.exists(file_path):
+            return send_from_directory(DIST_DIR, path)
+        return send_from_directory(DIST_DIR, "index.html")
+    return jsonify({
+        "message": "ParkBay Unified API & Management Engine Active",
+        "status": "online",
+        "endpoints": ["/api/facilities", "/api/auth/login", "/api/bookings", "/api/slots"]
+    })
 
 
 # ==============================================================================
