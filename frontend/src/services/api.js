@@ -19,10 +19,32 @@ async function request(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || `Request failed with status ${response.status}`);
+    let data;
+    const contentType = response.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/json')) {
+      data = await response.json().catch(() => null);
+    } else {
+      const rawText = await response.text().catch(() => '');
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = null;
+      }
     }
+
+    if (!response.ok) {
+      const errMsg = (data && data.error) || 
+        (response.status === 404 
+          ? `Backend API route not found at ${url}. Make sure your backend is deployed and VITE_API_URL is configured.` 
+          : `Server returned status ${response.status}`);
+      throw new Error(errMsg);
+    }
+
+    if (data === null) {
+      throw new Error(`Invalid response received from ${url}. Check your backend server.`);
+    }
+
     return data;
   } catch (error) {
     console.error(`API Error on [${endpoint}]:`, error);

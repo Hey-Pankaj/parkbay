@@ -13,13 +13,24 @@ from seed_data import seed_database
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "parkbay_secure_jwt_token_secret_key_2026")
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
-# Auto-initialize database tables and seed initial records (runs in both Gunicorn and direct mode)
+@app.after_request
+def after_request_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
+    return response
+
+# Auto-initialize database tables and seed initial records (runs in both Gunicorn, direct, and Vercel serverless mode)
 try:
     seed_database()
 except Exception as e:
     print(f"[Startup Notice] DB init: {e}")
+
+@app.route("/api/ping", methods=["GET", "OPTIONS"])
+def ping():
+    return jsonify({"status": "ok", "message": "ParkBay API server online", "timestamp": datetime.utcnow().isoformat()})
 
 # Plate validator regex (e.g., KA01MJ4321, MH02AB1234, DL3CAA1122)
 PLATE_REGEX = re.compile(r"^[A-Z0-9]{5,14}$")

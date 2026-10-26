@@ -41,8 +41,12 @@ def get_engine():
         logger.info(f"[Notice] MySQL server at {MYSQL_HOST}:{MYSQL_PORT} not reachable ({e}).")
         logger.info("[Notice] Switching to SQLite fallback (parkbay.db) so you can run the app immediately.")
         
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        sqlite_path = os.path.join(base_dir, "parkbay.db")
+        # On Vercel or other serverless containers, only /tmp is writable
+        if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            sqlite_path = os.path.join("/tmp", "parkbay.db")
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            sqlite_path = os.path.join(base_dir, "parkbay.db")
         sqlite_url = f"sqlite:///{sqlite_path}"
         engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
         return engine
