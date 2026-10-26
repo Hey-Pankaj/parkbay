@@ -1,0 +1,401 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name=claude:viewport-fit-sides content=cover><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}</style><style>.md-table{overflow-x:auto}@media print{.md-table{overflow-x:visible}}</style><style>:root{color-scheme:light dark;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}}:root[data-theme="dark"]{color-scheme:dark;--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}:root[data-theme="light"]{color-scheme:light}@media print{:root,:root[data-theme="dark"]{color-scheme:light;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}}body{background:var(--md-bg);color:var(--md-text);max-width:720px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:10px;font:14px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;overflow-wrap:break-word}body>:first-child{margin-top:0}h1,h2,h3,h4,h5,h6{margin:6px 0 0;line-height:1.25;font-weight:600;text-wrap:balance}h1{font-size:1.35em}h2{font-size:1.15em;color:var(--md-muted)}h3,h4,h5,h6{font-size:1em}p,ul,ol,blockquote,table,pre,hr{margin:0}strong{font-weight:600}a{color:var(--md-link);text-decoration:none}a:hover{text-decoration:underline}ul,ol{display:flex;flex-direction:column;gap:6px;padding-left:22px}ul{list-style:disc}ol{list-style:decimal}:is(li,td,th)>*+:is(p,ul,ol,blockquote){margin-top:6px}blockquote{display:flex;flex-direction:column;gap:10px;border-left:2px solid var(--md-rule);padding-left:10px;color:var(--md-muted)}:not(pre)>code{background:var(--md-fill);padding:1px 3px;border-radius:4px;font:.92em 'SF Mono',ui-monospace,Menlo,Consolas,monospace}a>code{background:none;color:inherit}pre{background:var(--md-fill);padding:10px 12px;border-radius:6px;overflow-x:auto;font:12px/1.5 'SF Mono',ui-monospace,Menlo,Consolas,monospace;margin-block:4px}pre code{background:none;padding:0;font:inherit}table{width:100%;border-collapse:separate;border-spacing:2px;font:inherit}th,td{padding:6px 8px;border-radius:3px;text-align:left;vertical-align:top}th{background:var(--md-fill-strong);font-weight:600}td{background:var(--md-fill)}:is(th,td) :not(pre)>code{background:transparent}hr{border:0;border-top:1px solid var(--md-rule-strong);margin-block:10px}img{max-width:100%;height:auto;border-radius:4px}</style>
+</head><body>
+<h1>ParkBay – full project code</h1>
+<p>Create this folder structure, paste each file's code, then run <code>pip install -r requirements.txt</code> and <code>python app.py</code>. Open http://127.0.0.1:5000</p>
+<pre><code>parkbay/
+  app.py
+  schema.sql
+  requirements.txt
+  templates/
+    index.html
+</code></pre>
+<h2>requirements.txt</h2>
+<pre><code>Flask&gt;=3.0
+</code></pre>
+<h2>schema.sql</h2>
+<pre><code class="language-sql">-- ParkBay schema (SQLite)
+CREATE TABLE IF NOT EXISTS slots (
+    id     TEXT PRIMARY KEY,          -- e.g. &#39;A-03&#39;
+    block  TEXT NOT NULL,             -- &#39;A&#39;, &#39;B&#39;
+    number INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bookings (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    slot_id  TEXT NOT NULL REFERENCES slots(id),
+    name     TEXT NOT NULL,
+    vehicle  TEXT NOT NULL,
+    hours    INTEGER NOT NULL CHECK (hours BETWEEN 1 AND 12),
+    time_in  TEXT NOT NULL,
+    time_out TEXT,
+    status   TEXT NOT NULL DEFAULT &#39;active&#39; CHECK (status IN (&#39;active&#39;,&#39;done&#39;))
+);
+
+-- The database itself prevents double booking:
+-- one active booking per slot, and one active booking per vehicle.
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_per_slot
+    ON bookings(slot_id) WHERE status = &#39;active&#39;;
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_per_vehicle
+    ON bookings(vehicle) WHERE status = &#39;active&#39;;
+</code></pre>
+<h2>app.py</h2>
+<pre><code class="language-python">&#34;&#34;&#34;ParkBay - parking management backend (Flask + SQLite).
+
+DBMS ............ SQLite tables + unique indexes (schema.sql)
+Data structures . min-heap (nearest free slot), deque (FIFO waiting list),
+                  dict (slot id -&gt; booking lookup)
+&#34;&#34;&#34;
+import heapq
+import os
+import re
+import sqlite3
+from collections import deque
+from datetime import datetime
+
+from flask import Flask, g, jsonify, render_template, request
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+DB = os.path.join(BASE, &#34;parking.db&#34;)
+RATE = 20                       # rupees per hour
+BLOCKS = {&#34;A&#34;: 12, &#34;B&#34;: 12}     # block -&gt; number of slots
+PLATE = re.compile(r&#34;^[A-Z0-9]{6,12}$&#34;)
+
+app = Flask(__name__)
+waitlist = deque()              # FIFO queue of dicts: name, vehicle, hours
+
+
+# ---------- database helpers ----------
+def get_db():
+    if &#34;db&#34; not in g:
+        g.db = sqlite3.connect(DB, timeout=10, isolation_level=None)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(_):
+    con = g.pop(&#34;db&#34;, None)
+    if con:
+        con.close()
+
+
+def init_db():
+    con = sqlite3.connect(DB)
+    with open(os.path.join(BASE, &#34;schema.sql&#34;)) as f:
+        con.executescript(f.read())
+    if con.execute(&#34;SELECT COUNT(*) FROM slots&#34;).fetchone()[0] == 0:
+        for block, n in BLOCKS.items():
+            for i in range(1, n + 1):
+                con.execute(&#34;INSERT INTO slots VALUES (?,?,?)&#34;, (f&#34;{block}-{i:02d}&#34;, block, i))
+        con.commit()
+    con.close()
+
+
+def now():
+    return datetime.now().isoformat(timespec=&#34;seconds&#34;)
+
+
+# ---------- data-structure helpers ----------
+def nearest_free_slot(db):
+    &#34;&#34;&#34;Min-heap ordered by (block, number): pops the nearest free slot.&#34;&#34;&#34;
+    rows = db.execute(
+        &#34;SELECT block, number, id FROM slots &#34;
+        &#34;WHERE id NOT IN (SELECT slot_id FROM bookings WHERE status=&#39;active&#39;)&#34;
+    ).fetchall()
+    heap = [(r[&#34;block&#34;], r[&#34;number&#34;], r[&#34;id&#34;]) for r in rows]
+    heapq.heapify(heap)
+    return heapq.heappop(heap)[2] if heap else None
+
+
+def create_booking(db, slot, name, vehicle, hours):
+    &#34;&#34;&#34;Insert a booking. Returns an error string, or None on success.&#34;&#34;&#34;
+    try:
+        db.execute(&#34;BEGIN IMMEDIATE&#34;)
+        db.execute(
+            &#34;INSERT INTO bookings(slot_id,name,vehicle,hours,time_in,status) &#34;
+            &#34;VALUES (?,?,?,?,?, &#39;active&#39;)&#34;, (slot, name, vehicle, hours, now()))
+        db.execute(&#34;COMMIT&#34;)
+        return None
+    except sqlite3.IntegrityError as e:
+        db.execute(&#34;ROLLBACK&#34;)
+        if &#34;vehicle&#34; in str(e):
+            return &#34;This vehicle is already parked.&#34;
+        return f&#34;Slot {slot} was just taken. Pick another.&#34;
+
+
+def read_person(data):
+    name = str(data.get(&#34;name&#34;, &#34;&#34;)).strip()[:30]
+    vehicle = re.sub(r&#34;\s+&#34;, &#34;&#34;, str(data.get(&#34;vehicle&#34;, &#34;&#34;))).upper()
+    try:
+        hours = int(data.get(&#34;hours&#34;, 0))
+    except (TypeError, ValueError):
+        hours = 0
+    if not name:
+        return None, &#34;Enter the driver name.&#34;
+    if not PLATE.match(vehicle):
+        return None, &#34;Enter a valid vehicle number, like MH02AB1234.&#34;
+    if not 1 &lt;= hours &lt;= 12:
+        return None, &#34;Duration must be 1 to 12 hours.&#34;
+    return (name, vehicle, hours), None
+
+
+def err(msg, code=400):
+    return jsonify(error=msg), code
+
+
+# ---------- routes ----------
+@app.get(&#34;/&#34;)
+def home():
+    return render_template(&#34;index.html&#34;, rate=RATE)
+
+
+@app.get(&#34;/api/slots&#34;)
+def api_slots():
+    db = get_db()
+    rows = db.execute(
+        &#34;SELECT s.id, s.block, b.name, b.vehicle, b.hours, b.time_in &#34;
+        &#34;FROM slots s LEFT JOIN bookings b ON b.slot_id = s.id AND b.status=&#39;active&#39; &#34;
+        &#34;ORDER BY s.block, s.number&#34;).fetchall()
+    slots = [dict(id=r[&#34;id&#34;], block=r[&#34;block&#34;], busy=r[&#34;vehicle&#34;] is not None,
+                  name=r[&#34;name&#34;], vehicle=r[&#34;vehicle&#34;], hours=r[&#34;hours&#34;],
+                  time_in=r[&#34;time_in&#34;]) for r in rows]
+    return jsonify(slots=slots, waiting=len(waitlist), rate=RATE)
+
+
+@app.post(&#34;/api/book&#34;)
+def api_book():
+    data = request.get_json(silent=True) or {}
+    person, e = read_person(data)
+    if e:
+        return err(e)
+    db = get_db()
+    slot = data.get(&#34;slot&#34;) or nearest_free_slot(db)      # no slot chosen -&gt; heap picks one
+    if not slot:
+        return err(&#34;The lot is full. You can join the waiting list.&#34;, 409)
+    if not db.execute(&#34;SELECT 1 FROM slots WHERE id=?&#34;, (slot,)).fetchone():
+        return err(&#34;Unknown slot.&#34;)
+    e = create_booking(db, slot, *person)
+    if e:
+        return err(e, 409)
+    return jsonify(ok=True, slot=slot, fee=person[2] * RATE)
+
+
+@app.post(&#34;/api/release&#34;)
+def api_release():
+    slot = (request.get_json(silent=True) or {}).get(&#34;slot&#34;)
+    db = get_db()
+    cur = db.execute(
+        &#34;UPDATE bookings SET status=&#39;done&#39;, time_out=? WHERE slot_id=? AND status=&#39;active&#39;&#34;,
+        (now(), slot))
+    if cur.rowcount == 0:
+        return err(&#34;That slot is not occupied.&#34;, 404)
+    assigned = None
+    while waitlist:                                        # FIFO: first in line gets the slot
+        nxt = waitlist.popleft()
+        if create_booking(db, slot, nxt[&#34;name&#34;], nxt[&#34;vehicle&#34;], nxt[&#34;hours&#34;]) is None:
+            assigned = nxt[&#34;name&#34;]
+            break
+    return jsonify(ok=True, assigned_to=assigned)
+
+
+@app.post(&#34;/api/waitlist&#34;)
+def api_waitlist():
+    data = request.get_json(silent=True) or {}
+    person, e = read_person(data)
+    if e:
+        return err(e)
+    db = get_db()
+    if nearest_free_slot(db):
+        return err(&#34;Slots are available. Book one directly.&#34;, 409)
+    if any(w[&#34;vehicle&#34;] == person[1] for w in waitlist):
+        return err(&#34;This vehicle is already on the waiting list.&#34;, 409)
+    waitlist.append(dict(name=person[0], vehicle=person[1], hours=person[2]))
+    return jsonify(ok=True, position=len(waitlist))
+
+
+if __name__ == &#34;__main__&#34;:
+    init_db()
+    app.run(debug=True)
+</code></pre>
+<h2>templates/index.html</h2>
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html lang=&#34;en&#34;&gt;
+&lt;head&gt;
+&lt;meta charset=&#34;utf-8&#34;&gt;
+&lt;meta name=&#34;viewport&#34; content=&#34;width=device-width, initial-scale=1, viewport-fit=cover&#34;&gt;
+&lt;title&gt;ParkBay – Parking Management&lt;/title&gt;
+&lt;link href=&#34;https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap&#34; rel=&#34;stylesheet&#34;&gt;
+&lt;style&gt;
+:root{--bg:#ecebe6;--ink:#1f2326;--mute:#667;--card:#fff;--asph:#2d3237;--paint:#f2c230;--free:#2e9e5b;--busy:#c8433a;--pick:#2f6fdb;--line:#d6d4cc;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=&#34;light&#34;]){--bg:#15181b;--ink:#eceae4;--mute:#9aa;--card:#21262a;--asph:#101315;--line:#353b40}}
+:root[data-theme=&#34;dark&#34;]{--bg:#15181b;--ink:#eceae4;--mute:#9aa;--card:#21262a;--asph:#101315;--line:#353b40}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1,h2,.num{font-family:&#34;Barlow Condensed&#34;,&#34;Arial Narrow&#34;,sans-serif;font-weight:700;margin:0}
+h1{font-size:2rem;border-left:8px solid var(--paint);padding-left:10px}
+.sub{color:var(--mute);margin:4px 0 16px 18px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;border-bottom:5px solid var(--c)}
+.stat .num{font-size:2.4rem;line-height:1}
+.stat span{color:var(--mute);font-size:.9rem}
+.layout{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+@media(max-width:800px){.layout{grid-template-columns:1fr}}
+.lot{background:var(--asph);border-radius:10px;padding:12px}
+.block+.block{margin-top:14px;border-top:3px dashed var(--paint);padding-top:12px}
+.block h2{color:var(--paint);font-size:1.2rem;margin-bottom:8px}
+.row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.lane{height:20px;margin:6px 0;display:flex;align-items:center;color:#8a9097;font-size:.7rem;letter-spacing:.3em;justify-content:center;border-top:1px dashed #555;border-bottom:1px dashed #555}
+.bay{aspect-ratio:3/4;border:2px solid #fff8;border-radius:4px;background:color-mix(in srgb,var(--free) 22%,transparent);color:#fff;font:600 .8rem Barlow,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;padding:2px;min-width:0}
+.bay:focus-visible{outline:3px solid var(--paint);outline-offset:2px}
+.bay.busy{background:var(--busy);cursor:not-allowed;border-color:#fff4}
+.bay.pick{background:var(--pick);border-color:#fff;box-shadow:0 0 0 2px var(--pick)}
+.bay small{font-size:.58rem;font-weight:400;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend{display:flex;gap:14px;margin:10px 0 0;font-size:.85rem;color:#cfd3d6;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel h2{font-size:1.4rem;margin-bottom:8px}
+label{display:block;font-size:.85rem;color:var(--mute);margin-top:10px}
+input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+button{font:600 1rem Barlow,sans-serif;border:0;border-radius:6px;padding:11px 14px;cursor:pointer;background:var(--ink);color:var(--bg)}
+button.go{width:100%;margin-top:14px;background:var(--paint);color:#1f2326}
+button.go:disabled{opacity:.45;cursor:not-allowed}
+button.alt{width:100%;margin-top:8px;background:transparent;color:var(--ink);border:1px solid var(--ink)}
+button[hidden]{display:none}
+button.rel{padding:6px 10px;background:transparent;color:var(--busy);border:1px solid var(--busy);font-size:.85rem}
+.msg{min-height:1.4em;margin-top:10px;font-size:.9rem}
+.msg.err{color:var(--busy)}.msg.ok{color:var(--free)}
+.fee{font-size:.9rem;color:var(--mute);margin-top:8px}
+.book{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.table{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:600}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;main&gt;
+&lt;h1&gt;ParkBay&lt;/h1&gt;
+&lt;p class=&#34;sub&#34;&gt;Pick a free bay, or let the system choose the nearest one.&lt;/p&gt;
+
+&lt;section class=&#34;stats&#34; aria-label=&#34;Slot summary&#34;&gt;
+&lt;div class=&#34;stat&#34; style=&#34;--c:var(--pick)&#34;&gt;&lt;div class=&#34;num&#34; id=&#34;sTotal&#34;&gt;0&lt;/div&gt;&lt;span&gt;Total slots&lt;/span&gt;&lt;/div&gt;
+&lt;div class=&#34;stat&#34; style=&#34;--c:var(--free)&#34;&gt;&lt;div class=&#34;num&#34; id=&#34;sFree&#34;&gt;0&lt;/div&gt;&lt;span&gt;Available&lt;/span&gt;&lt;/div&gt;
+&lt;div class=&#34;stat&#34; style=&#34;--c:var(--busy)&#34;&gt;&lt;div class=&#34;num&#34; id=&#34;sBusy&#34;&gt;0&lt;/div&gt;&lt;span&gt;Occupied&lt;/span&gt;&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;div class=&#34;layout&#34;&gt;
+&lt;section&gt;
+&lt;div class=&#34;lot&#34; id=&#34;lot&#34;&gt;&lt;/div&gt;
+&lt;div class=&#34;legend&#34;&gt;&lt;span&gt;&lt;i style=&#34;background:var(--free)&#34;&gt;&lt;/i&gt;Available&lt;/span&gt;&lt;span&gt;&lt;i style=&#34;background:var(--busy)&#34;&gt;&lt;/i&gt;Occupied&lt;/span&gt;&lt;span&gt;&lt;i style=&#34;background:var(--pick)&#34;&gt;&lt;/i&gt;Your choice&lt;/span&gt;&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;section class=&#34;panel&#34;&gt;
+&lt;h2&gt;Book a slot&lt;/h2&gt;
+&lt;div&gt;Selected: &lt;b id=&#34;selTxt&#34;&gt;none yet&lt;/b&gt;&lt;/div&gt;
+&lt;label for=&#34;name&#34;&gt;Driver name&lt;/label&gt;
+&lt;input id=&#34;name&#34; autocomplete=&#34;name&#34; maxlength=&#34;30&#34;&gt;
+&lt;label for=&#34;veh&#34;&gt;Vehicle number&lt;/label&gt;
+&lt;input id=&#34;veh&#34; placeholder=&#34;MH02AB1234&#34; maxlength=&#34;12&#34; style=&#34;text-transform:uppercase&#34;&gt;
+&lt;label for=&#34;hrs&#34;&gt;Duration&lt;/label&gt;
+&lt;select id=&#34;hrs&#34;&gt;&lt;/select&gt;
+&lt;div class=&#34;fee&#34; id=&#34;fee&#34;&gt;&lt;/div&gt;
+&lt;button class=&#34;go&#34; id=&#34;goBtn&#34; disabled&gt;Book selected slot&lt;/button&gt;
+&lt;button class=&#34;alt&#34; id=&#34;autoBtn&#34;&gt;Auto-assign nearest slot&lt;/button&gt;
+&lt;button class=&#34;alt&#34; id=&#34;waitBtn&#34; hidden&gt;Join waiting list&lt;/button&gt;
+&lt;div class=&#34;fee&#34; id=&#34;waitTxt&#34;&gt;&lt;/div&gt;
+&lt;div class=&#34;msg&#34; id=&#34;msg&#34; role=&#34;status&#34; aria-live=&#34;polite&#34;&gt;&lt;/div&gt;
+&lt;/section&gt;
+&lt;/div&gt;
+
+&lt;section class=&#34;book&#34;&gt;
+&lt;h2&gt;Current bookings&lt;/h2&gt;
+&lt;div class=&#34;table&#34; id=&#34;tbl&#34;&gt;&lt;/div&gt;
+&lt;/section&gt;
+&lt;/main&gt;
+
+&lt;script&gt;
+var RATE={{ rate }};
+var data={slots:[],waiting:0};
+var picked=null;
+function $(id){return document.getElementById(id);}
+function esc(s){var d=document.createElement(&#34;div&#34;);d.textContent=s;return d.innerHTML;}
+function setMsg(t,c){var m=$(&#34;msg&#34;);m.textContent=t;m.className=&#34;msg &#34;+(c||&#34;&#34;);}
+async function api(url,body){
+ try{var r=await fetch(url,body?{method:&#34;POST&#34;,headers:{&#34;Content-Type&#34;:&#34;application/json&#34;},body:JSON.stringify(body)}:undefined);
+  var j=await r.json();if(!r.ok)throw new Error(j.error||&#34;Request failed&#34;);return j;}
+ catch(e){throw new Error(e.message===&#34;Failed to fetch&#34;?&#34;Cannot reach the server. Is app.py running?&#34;:e.message);}
+}
+function form(){return {name:$(&#34;name&#34;).value,vehicle:$(&#34;veh&#34;).value,hours:+$(&#34;hrs&#34;).value};}
+async function load(){
+ try{data=await api(&#34;/api/slots&#34;);
+  if(picked&amp;&amp;data.slots.some(function(s){return s.id===picked&amp;&amp;s.busy;}))picked=null;
+  render();}catch(e){setMsg(e.message,&#34;err&#34;);}
+}
+function renderLot(){
+ var h=&#34;&#34;,blocks={};
+ data.slots.forEach(function(s){(blocks[s.block]=blocks[s.block]||[]).push(s);});
+ Object.keys(blocks).forEach(function(b){
+  var list=blocks[b],half=list.length/2;
+  function bays(a){return a.map(function(s){
+   var cls=&#34;bay&#34;+(s.busy?&#34; busy&#34;:&#34;&#34;)+(s.id===picked?&#34; pick&#34;:&#34;&#34;);
+   var lab=&#34;Slot &#34;+s.id+(s.busy?&#34;, occupied&#34;:&#34;, available&#34;+(s.id===picked?&#34;, selected&#34;:&#34;&#34;));
+   return &#39;&lt;button type=&#34;button&#34; class=&#34;&#39;+cls+&#39;&#34; data-id=&#34;&#39;+s.id+&#39;&#34; aria-label=&#34;&#39;+lab+&#39;&#34;&gt;&#39;+s.id.split(&#34;-&#34;)[1]+(s.busy?&#39;&lt;small&gt;&#39;+esc(s.vehicle)+&#39;&lt;/small&gt;&#39;:&#39;&#39;)+&#39;&lt;/button&gt;&#39;;
+  }).join(&#34;&#34;);}
+  h+=&#39;&lt;div class=&#34;block&#34;&gt;&lt;h2&gt;Block &#39;+b+&#39;&lt;/h2&gt;&lt;div class=&#34;row&#34;&gt;&#39;+bays(list.slice(0,half))+&#39;&lt;/div&gt;&lt;div class=&#34;lane&#34;&gt;DRIVE LANE&lt;/div&gt;&lt;div class=&#34;row&#34;&gt;&#39;+bays(list.slice(half))+&#39;&lt;/div&gt;&lt;/div&gt;&#39;;
+ });
+ $(&#34;lot&#34;).innerHTML=h;
+}
+function render(){
+ var busy=data.slots.filter(function(s){return s.busy;});
+ var free=data.slots.length-busy.length;
+ $(&#34;sTotal&#34;).textContent=data.slots.length;$(&#34;sBusy&#34;).textContent=busy.length;$(&#34;sFree&#34;).textContent=free;
+ renderLot();
+ $(&#34;selTxt&#34;).textContent=picked||&#34;none yet&#34;;
+ $(&#34;goBtn&#34;).disabled=!picked;
+ $(&#34;autoBtn&#34;).hidden=free===0;
+ $(&#34;waitBtn&#34;).hidden=free&gt;0;
+ $(&#34;waitTxt&#34;).textContent=data.waiting?data.waiting+&#34; waiting for a slot&#34;:&#34;&#34;;
+ $(&#34;fee&#34;).textContent=&#34;Fee: ₹&#34;+(+$(&#34;hrs&#34;).value)*RATE+&#34; (₹&#34;+RATE+&#34; per hour)&#34;;
+ if(!busy.length){$(&#34;tbl&#34;).innerHTML=&#34;&lt;p&gt;No active bookings. Pick a green bay to make one.&lt;/p&gt;&#34;;return;}
+ var r=busy.map(function(s){
+  var t=new Date(s.time_in).toLocaleTimeString([],{hour:&#34;2-digit&#34;,minute:&#34;2-digit&#34;});
+  return &#34;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&#34;+s.id+&#34;&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&#34;+esc(s.name)+&#34;&lt;/td&gt;&lt;td&gt;&#34;+esc(s.vehicle)+&#34;&lt;/td&gt;&lt;td&gt;&#34;+t+&#34;&lt;/td&gt;&lt;td&gt;&#34;+s.hours+&#34; h&lt;/td&gt;&lt;td&gt;₹&#34;+s.hours*RATE+&#39;&lt;/td&gt;&lt;td&gt;&lt;button class=&#34;rel&#34; data-rel=&#34;&#39;+s.id+&#39;&#34;&gt;Release&lt;/button&gt;&lt;/td&gt;&lt;/tr&gt;&#39;;}).join(&#34;&#34;);
+ $(&#34;tbl&#34;).innerHTML=&#34;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Slot&lt;/th&gt;&lt;th&gt;Driver&lt;/th&gt;&lt;th&gt;Vehicle&lt;/th&gt;&lt;th&gt;In&lt;/th&gt;&lt;th&gt;Hours&lt;/th&gt;&lt;th&gt;Fee&lt;/th&gt;&lt;th&gt;&lt;/th&gt;&lt;/tr&gt;&#34;+r+&#34;&lt;/table&gt;&#34;;
+}
+for(var i=1;i&lt;=12;i++){var o=document.createElement(&#34;option&#34;);o.value=i;o.textContent=i+(i===1?&#34; hour&#34;:&#34; hours&#34;);$(&#34;hrs&#34;).appendChild(o);}
+$(&#34;hrs&#34;).onchange=render;
+$(&#34;lot&#34;).addEventListener(&#34;click&#34;,function(e){
+ var b=e.target.closest(&#34;.bay&#34;);if(!b)return;
+ var id=b.dataset.id,s=data.slots.find(function(x){return x.id===id;});
+ if(s.busy){setMsg(&#34;Slot &#34;+id+&#34; is occupied. Choose a green bay.&#34;,&#34;err&#34;);return;}
+ picked=(picked===id)?null:id;setMsg(&#34;&#34;);render();
+});
+async function book(slot){
+ try{var j=await api(&#34;/api/book&#34;,Object.assign(form(),{slot:slot}));
+  picked=null;$(&#34;name&#34;).value=&#34;&#34;;$(&#34;veh&#34;).value=&#34;&#34;;
+  await load();setMsg(&#34;Booked slot &#34;+j.slot+&#34;. Fee ₹&#34;+j.fee+&#34;.&#34;,&#34;ok&#34;);
+ }catch(e){setMsg(e.message,&#34;err&#34;);load();}
+}
+$(&#34;goBtn&#34;).onclick=function(){book(picked);};
+$(&#34;autoBtn&#34;).onclick=function(){book(null);};
+$(&#34;waitBtn&#34;).onclick=async function(){
+ try{var j=await api(&#34;/api/waitlist&#34;,form());await load();setMsg(&#34;You are number &#34;+j.position+&#34; on the waiting list.&#34;,&#34;ok&#34;);}
+ catch(e){setMsg(e.message,&#34;err&#34;);}
+};
+$(&#34;tbl&#34;).addEventListener(&#34;click&#34;,async function(e){
+ var id=e.target.dataset&amp;&amp;e.target.dataset.rel;if(!id)return;
+ try{var j=await api(&#34;/api/release&#34;,{slot:id});await load();
+  setMsg(j.assigned_to?&#34;Slot &#34;+id+&#34; released and given to &#34;+j.assigned_to+&#34; from the waiting list.&#34;:&#34;Slot &#34;+id+&#34; released.&#34;,&#34;ok&#34;);
+ }catch(err){setMsg(err.message,&#34;err&#34;);}
+});
+load();setInterval(load,5000);
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>Delete <code>parking.db</code> to reset all bookings. The waiting list is in memory and clears when the server restarts.</p>
+
+</body></html>
