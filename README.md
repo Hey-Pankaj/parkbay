@@ -126,3 +126,41 @@ npm run dev
 - `POST /api/bookings/<id>/cancel`: Cancel booking and refund
 - `GET /api/admin/stats`: Real-time administrative metrics
 - `POST /api/anpr/scan`: Simulate ANPR camera plate scan and boom barrier lift
+
+---
+
+## 🚢 Production Deployment
+
+ParkBay is pre-configured for instant zero-hassle deployment across multiple environments:
+
+### Option A: One-Command Docker Compose (VPS, AWS, DigitalOcean)
+
+The repository includes a complete multi-container setup with MySQL 8.0, Flask (Gunicorn), and React (Nginx):
+
+```bash
+docker compose up -d --build
+```
+- **Web Application**: Accessible at `http://your-server-ip:80`
+- **Backend API**: Reverse-proxied automatically through Nginx `/api/`
+- **Database**: Initialized with auto-seeded facilities and persistent storage volume
+
+### Option B: 1-Click Free Cloud Deployment (Render)
+
+1. Fork or push this repository to GitHub.
+2. Sign in to [Render](https://render.com).
+3. Click **New +** ➔ **Blueprint**, select your `parkbay` repository.
+4. Render will automatically read `render.yaml` and provision both:
+   - **`parkbay-backend`** (Python web service with Gunicorn)
+   - **`parkbay-frontend`** (Static site with SPA rewrite rules)
+
+### Option C: Split Hosting (Vercel + Railway / Render)
+
+- **Frontend on Vercel**:
+  - Connect your repo on Vercel, set root directory to `frontend`.
+  - Add Environment Variable: `VITE_API_URL=https://your-backend-api.onrender.com`.
+  - Build command: `npm run build`, output directory: `dist`.
+- **Backend on Railway / Render**:
+  - Set root directory to `backend`.
+  - Build command: `pip install -r requirements.txt`.
+  - Start command: `gunicorn app:app --bind 0.0.0.0:$PORT`.
+

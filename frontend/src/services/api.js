@@ -1,5 +1,7 @@
 // API service client for ParkBay REST backend
-const API_BASE = '/api';
+// In local dev or reverse proxy, defaults to '/api'. For split hosting (e.g. Vercel + Render), uses VITE_API_URL.
+const rawApiUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || '';
+const API_BASE = rawApiUrl ? `${rawApiUrl.replace(/\/$/, '')}/api` : '/api';
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;

@@ -15,6 +15,12 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "parkbay_secure_jwt_token_secret_key_2026")
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+# Auto-initialize database tables and seed initial records (runs in both Gunicorn and direct mode)
+try:
+    seed_database()
+except Exception as e:
+    print(f"[Startup Notice] DB init: {e}")
+
 # Plate validator regex (e.g., KA01MJ4321, MH02AB1234, DL3CAA1122)
 PLATE_REGEX = re.compile(r"^[A-Z0-9]{5,14}$")
 
@@ -830,9 +836,10 @@ def serve_frontend(path):
 # ==============================================================================
 
 if __name__ == "__main__":
-    seed_database()
+    port = int(os.getenv("PORT", 5000))
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() in ("true", "1", "yes")
     print("==========================================================")
-    print("  ParkBay Backend Server running on http://127.0.0.1:5000  ")
+    print(f"  ParkBay Backend Server running on http://127.0.0.1:{port}  ")
     print("  REST APIs ready: /api/facilities, /api/bookings, /api/iot")
     print("==========================================================")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
