@@ -138,7 +138,7 @@ export default function LoginPage({ onBackToLanding, initialRole = 'driver' }) {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="w-full bg-navy-950/80 border border-white/15 rounded-xl pl-10 pr-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                      placeholder="e.g. Alex Driver"
+                      placeholder="e.g. Aarav Sharma"
                     />
                   </div>
                 </div>

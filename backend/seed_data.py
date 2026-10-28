@@ -24,7 +24,7 @@ def seed_database():
             phone="+91 80 4123 5678"
         )
         driver_user = User(
-            full_name="Alex Driver",
+            full_name="Aarav Sharma",
             email="driver@parkbay.com",
             password_hash=generate_password_hash("password123"),
             role="driver",
@@ -136,7 +136,7 @@ def seed_database():
             slot_id=slot1.id,
             vehicle_number="KA01MJ4321",
             vehicle_type="ev",
-            driver_name="Alex Driver",
+            driver_name="Aarav Sharma",
             driver_phone="+91 98765 43210",
             start_time=now - timedelta(hours=1),
             end_time=now + timedelta(hours=2),

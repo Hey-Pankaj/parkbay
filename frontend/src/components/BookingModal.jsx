@@ -25,10 +25,10 @@ export default function BookingModal({
 }) {
   const { user } = useAuth();
 
-  const [driverName, setDriverName] = useState(user?.full_name || 'Alex Driver');
+  const [driverName, setDriverName] = useState(user?.full_name || 'Aarav Sharma');
   const [driverPhone, setDriverPhone] = useState(user?.phone || '+91 98765 43210');
-  const [vehicleNumber, setVehicleNumber] = useState('KA01MJ4321');
-  const [vehicleType, setVehicleType] = useState('sedan');
+  const [vehicleNumber, setVehicleNumber] = useState(user?.vehicle_number || 'KA01MJ4321');
+  const [vehicleType, setVehicleType] = useState(user?.vehicle_type || 'sedan');
   const [paymentMethod, setPaymentMethod] = useState('upi');
   
   const [calculation, setCalculation] = useState(null);
@@ -36,6 +36,14 @@ export default function BookingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [completedBooking, setCompletedBooking] = useState(null);
+
+  // Sync state if user changes
+  useEffect(() => {
+    if (user?.full_name) setDriverName(user.full_name);
+    if (user?.phone) setDriverPhone(user.phone);
+    if (user?.vehicle_number) setVehicleNumber(user.vehicle_number);
+    if (user?.vehicle_type) setVehicleType(user.vehicle_type);
+  }, [user]);
 
   // Recalculate price when slot, startTime or duration changes
   useEffect(() => {
@@ -218,7 +226,7 @@ export default function BookingModal({
                     value={driverName}
                     onChange={(e) => setDriverName(e.target.value)}
                     className="w-full bg-navy-950/80 border border-white/15 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                    placeholder="Alex Driver"
+                    placeholder="e.g. Aarav Sharma"
                   />
                 </div>
                 <div>

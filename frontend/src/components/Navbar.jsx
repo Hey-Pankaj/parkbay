@@ -93,15 +93,37 @@ export default function Navbar({ activeTab, setActiveTab, onOpenAuthModal }) {
                 </button>
               </>
             )}
+            {/* Profile Navigation */}
+            {user && (
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === 'profile'
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <UserCircle className="w-4 h-4" />
+                Profile
+              </button>
+            )}
           </nav>
 
           {/* User Controls */}
           <div className="flex items-center gap-3">
             {user ? (
               <div className="flex items-center gap-2 pl-2 border-l border-white/10">
-                <div className="text-right hidden sm:block">
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`text-right hidden sm:block p-1.5 px-2.5 rounded-xl transition-all cursor-pointer text-left ${
+                    activeTab === 'profile'
+                      ? 'bg-emerald-500/15 border border-emerald-500/30'
+                      : 'hover:bg-white/5 border border-transparent'
+                  }`}
+                  title="View & Edit Personal Information in Profile"
+                >
                   <div className="text-xs font-semibold text-white leading-tight flex items-center gap-1.5 justify-end">
-                    {user.full_name}
+                    <span className="hover:text-emerald-400 transition-colors">{user.full_name}</span>
                     {isAdmin ? (
                       <span className="px-1.5 py-0.2 bg-amber-400/20 text-amber-300 border border-amber-400/40 rounded text-[10px]">
                         ADMIN
@@ -113,7 +135,7 @@ export default function Navbar({ activeTab, setActiveTab, onOpenAuthModal }) {
                     )}
                   </div>
                   <div className="text-[11px] text-slate-400">{user.email}</div>
-                </div>
+                </button>
 
                 <button
                   onClick={logout}
@@ -174,6 +196,16 @@ export default function Navbar({ activeTab, setActiveTab, onOpenAuthModal }) {
               <span>IoT Sim</span>
             </button>
           </>
+        )}
+
+        {user && (
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'text-emerald-400' : 'text-slate-400'}`}
+          >
+            <UserCircle className="w-4 h-4" />
+            <span>Profile</span>
+          </button>
         )}
       </div>
     </header>

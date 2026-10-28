@@ -14,6 +14,11 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(20), default="driver", nullable=False) # 'driver' or 'admin'
     phone = Column(String(20), nullable=True)
+    vehicle_number = Column(String(50), nullable=True, default="KA01MJ4321")
+    vehicle_type = Column(String(50), nullable=True, default="sedan")
+    city = Column(String(100), nullable=True, default="Bengaluru")
+    address = Column(String(255), nullable=True)
+    emergency_contact = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     bookings = relationship("Booking", back_populates="user", cascade="all, delete-orphan")
@@ -25,6 +30,11 @@ class User(Base):
             "email": self.email,
             "role": self.role,
             "phone": self.phone,
+            "vehicle_number": getattr(self, "vehicle_number", None) or "KA01MJ4321",
+            "vehicle_type": getattr(self, "vehicle_type", None) or "sedan",
+            "city": getattr(self, "city", None) or "Bengaluru",
+            "address": getattr(self, "address", None) or "",
+            "emergency_contact": getattr(self, "emergency_contact", None) or "",
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 

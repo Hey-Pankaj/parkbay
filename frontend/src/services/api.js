@@ -101,11 +101,47 @@ function handleFallback(endpoint, options) {
     
     let user;
     if (found) {
-      user = { id: found.id, full_name: found.full_name, email: found.email, role: found.role, phone: found.phone };
-    } else if (email.includes('admin')) {
-      user = { id: 1, full_name: 'ParkBay Admin Officer', email: 'admin@parkbay.com', role: 'admin', phone: '+91 80 4123 5678' };
+      user = { 
+        id: found.id, 
+        full_name: found.full_name, 
+        email: found.email, 
+        role: found.role, 
+        phone: found.phone || '+91 98765 43210',
+        vehicle_number: found.vehicle_number || 'KA01MJ4321',
+        vehicle_type: found.vehicle_type || 'sedan',
+        city: found.city || 'Bengaluru',
+        address: found.address || '',
+        emergency_contact: found.emergency_contact || ''
+      };
+    } else if (email && email.includes('admin')) {
+      user = { 
+        id: 1, 
+        full_name: 'ParkBay Admin Officer', 
+        email: 'admin@parkbay.com', 
+        role: 'admin', 
+        phone: '+91 80 4123 5678',
+        city: 'Bengaluru'
+      };
     } else {
-      user = { id: 2, full_name: 'Alex Driver', email: email || 'driver@parkbay.com', role: 'driver', phone: '+91 98765 43210' };
+      let derivedName = 'Aarav Sharma';
+      if (email && email.includes('@')) {
+        const local = email.split('@')[0].replace(/[0-9._-]+/g, ' ').trim();
+        if (local.length > 1) {
+          derivedName = local.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        }
+      }
+      user = { 
+        id: 2, 
+        full_name: derivedName, 
+        email: email || 'driver@parkbay.com', 
+        role: 'driver', 
+        phone: '+91 98765 43210',
+        vehicle_number: 'KA01MJ4321',
+        vehicle_type: 'sedan',
+        city: 'Bengaluru',
+        address: 'Plot 42, Brigade Road',
+        emergency_contact: '+91 98450 11223'
+      };
     }
     return { token: `local-token-${Date.now()}`, user };
   }
@@ -139,7 +175,7 @@ function handleFallback(endpoint, options) {
       user_id: body.user_id || 2,
       facility_id: body.facility_id || 1,
       slot_id: body.slot_id,
-      driver_name: body.driver_name || 'Alex Driver',
+      driver_name: body.driver_name || 'Aarav Sharma',
       driver_phone: body.driver_phone || '',
       vehicle_number: (body.vehicle_number || 'KA01AB1234').toUpperCase(),
       vehicle_type: body.vehicle_type || 'standard',
@@ -234,7 +270,7 @@ function handleFallback(endpoint, options) {
         },
         { 
           id: 2, 
-          full_name: 'Alex Driver', 
+          full_name: 'Aarav Sharma', 
           email: 'driver@parkbay.com', 
           role: 'driver', 
           phone: '+91 98765 43210', 
@@ -242,9 +278,9 @@ function handleFallback(endpoint, options) {
           total_bookings: 4, 
           active_bookings: 1,
           bookings: [
-            { id: 101, booking_ref: 'PB-ALEX01', facility_name: 'ParkBay Central Galleria', slot_code: 'A-02', vehicle_number: 'KA01MJ4321', start_time: new Date().toISOString(), end_time: new Date(Date.now() + 7200000).toISOString(), total_hours: 2, paid_amount: 94.4, booking_status: 'active' },
-            { id: 102, booking_ref: 'PB-ALEX02', facility_name: 'ParkBay Tech Park Hub', slot_code: 'B-04', vehicle_number: 'KA01MJ4321', start_time: new Date(Date.now() - 86400000).toISOString(), end_time: new Date(Date.now() - 79200000).toISOString(), total_hours: 2, paid_amount: 82.6, booking_status: 'completed' },
-            { id: 103, booking_ref: 'PB-ALEX03', facility_name: 'ParkBay Airport Express', slot_code: 'C-01', vehicle_number: 'KA01MJ4321', start_time: new Date(Date.now() - 172800000).toISOString(), end_time: new Date(Date.now() - 158400000).toISOString(), total_hours: 4, paid_amount: 283.2, booking_status: 'completed' }
+            { id: 101, booking_ref: 'PB-ARV01', facility_name: 'ParkBay Central Galleria', slot_code: 'A-02', vehicle_number: 'KA01MJ4321', start_time: new Date().toISOString(), end_time: new Date(Date.now() + 7200000).toISOString(), total_hours: 2, paid_amount: 94.4, booking_status: 'active' },
+            { id: 102, booking_ref: 'PB-ARV02', facility_name: 'ParkBay Tech Park Hub', slot_code: 'B-04', vehicle_number: 'KA01MJ4321', start_time: new Date(Date.now() - 86400000).toISOString(), end_time: new Date(Date.now() - 79200000).toISOString(), total_hours: 2, paid_amount: 82.6, booking_status: 'completed' },
+            { id: 103, booking_ref: 'PB-ARV03', facility_name: 'ParkBay Airport Express', slot_code: 'C-01', vehicle_number: 'KA01MJ4321', start_time: new Date(Date.now() - 172800000).toISOString(), end_time: new Date(Date.now() - 158400000).toISOString(), total_hours: 4, paid_amount: 283.2, booking_status: 'completed' }
           ]
         },
         { 
@@ -334,6 +370,30 @@ function handleFallback(endpoint, options) {
   // ANPR camera scan simulation
   if (endpoint.startsWith('/camera/anpr/scan')) {
     return { access_granted: true, barrier_status: 'OPEN', message: `Welcome! Barrier Open for vehicle ${body.vehicle_number || 'KA01MJ4321'}` };
+  }
+
+  // Personal Information & User Profile
+  if (endpoint === '/users/profile' || endpoint.startsWith('/users/profile')) {
+    let currentUser = JSON.parse(localStorage.getItem('parkbay_user') || 'null');
+    if (method === 'PUT') {
+      const updatedUser = {
+        ...(currentUser || {}),
+        ...body
+      };
+      localStorage.setItem('parkbay_user', JSON.stringify(updatedUser));
+      
+      const users = JSON.parse(localStorage.getItem('parkbay_local_users') || '[]');
+      const idx = users.findIndex(u => (updatedUser.id && u.id === updatedUser.id) || (updatedUser.email && u.email === updatedUser.email));
+      if (idx !== -1) {
+        users[idx] = { ...users[idx], ...updatedUser };
+      } else {
+        users.push(updatedUser);
+      }
+      localStorage.setItem('parkbay_local_users', JSON.stringify(users));
+
+      return { ok: true, message: 'Personal Information updated successfully!', user: updatedUser };
+    }
+    return { ok: true, user: currentUser };
   }
 
   return { message: 'Success' };
@@ -463,4 +523,11 @@ export const api = {
 
   simulateAnprScan: (vehicleNumber, gateId = 'GATE-01') => 
     request('/camera/anpr/scan', { method: 'POST', body: { vehicle_number: vehicleNumber, gate_id: gateId } }),
+
+  // User Profile & Personal Information
+  getProfile: () => 
+    request('/users/profile'),
+
+  updateProfile: (profileData) => 
+    request('/users/profile', { method: 'PUT', body: profileData }),
 };

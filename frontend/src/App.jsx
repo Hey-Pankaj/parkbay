@@ -11,6 +11,7 @@ import AuthModal from './components/AuthModal';
 import MyBookingsPage from './pages/MyBookingsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import IoTVisionPage from './pages/IoTVisionPage';
+import ProfilePage from './pages/ProfilePage';
 
 import { 
   ShieldCheck, 
@@ -19,7 +20,8 @@ import {
   Radio, 
   Database, 
   Cpu, 
-  ExternalLink 
+  ExternalLink,
+  UserCircle
 } from 'lucide-react';
 
 function getInitialStartTime() {
@@ -58,12 +60,12 @@ function MainApp() {
   useEffect(() => {
     if (user) {
       if (isAdmin) {
-        // Admins only access 'admin', 'iot-vision', and 'explore' (no my-bookings)
-        if (!['admin', 'iot-vision', 'explore'].includes(activeTab)) {
+        // Admins access 'admin', 'iot-vision', 'explore', and 'profile'
+        if (!['admin', 'iot-vision', 'explore', 'profile'].includes(activeTab)) {
           setActiveTab('admin');
         }
       } else {
-        // Driver / regular user strictly only accesses 'explore' or 'my-bookings'
+        // Driver / regular user accesses 'explore', 'my-bookings', or 'profile'
         if (activeTab === 'admin' || activeTab === 'iot-vision') {
           setActiveTab('explore');
         }
@@ -222,21 +224,39 @@ function MainApp() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 {isAdmin ? (
-                  <button
-                    onClick={() => setActiveTab('admin')}
-                    className="px-4 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 text-xs font-semibold transition-all"
-                  >
-                    Manage Allotments & Users
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setActiveTab('admin')}
+                      className="px-4 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 text-xs font-semibold transition-all"
+                    >
+                      Manage Allotments & Users
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('profile')}
+                      className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all flex items-center gap-1.5"
+                    >
+                      <UserCircle className="w-3.5 h-3.5 text-amber-400" />
+                      Personal Info
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    onClick={() => setActiveTab('my-bookings')}
-                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
-                  >
-                    View My Passes
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setActiveTab('my-bookings')}
+                      className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
+                    >
+                      View My Passes
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('profile')}
+                      className="px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+                    >
+                      <UserCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      Personal Info
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -283,6 +303,14 @@ function MainApp() {
           <AdminDashboardPage
             facilities={facilities}
             onRefreshFacilities={fetchFacilities}
+          />
+        )}
+
+        {/* Profile & Personal Information Page */}
+        {activeTab === 'profile' && (
+          <ProfilePage
+            onGoToExplore={() => setActiveTab('explore')}
+            onGoToBookings={() => setActiveTab('my-bookings')}
           />
         )}
 

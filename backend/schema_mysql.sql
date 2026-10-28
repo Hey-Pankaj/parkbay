@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS sensor_telemetry (
 -- Default admin password:  'admin123'
 INSERT INTO users (id, full_name, email, password_hash, role, phone)
 VALUES 
-(1, 'Alex Driver', 'driver@parkbay.com', 'scrypt:32768:8:1$7U60pLh9c5K1J4Fm$8c39e2365287ba304b4cf5da3e30f40d7c7689a7da1cfbf442d7653697e88229', 'driver', '+91 98765 43210'),
+(1, 'Aarav Sharma', 'driver@parkbay.com', 'scrypt:32768:8:1$7U60pLh9c5K1J4Fm$8c39e2365287ba304b4cf5da3e30f40d7c7689a7da1cfbf442d7653697e88229', 'driver', '+91 98765 43210'),
 (2, 'ParkBay Admin', 'admin@parkbay.com', 'scrypt:32768:8:1$y5k4Zq1p6L8m3B0v$f81665a4439cba91f76d9cfd1b117565eb631baad7a35fe6f6a73602fc5f0be1', 'admin', '+91 80 4123 5678')
 ON DUPLICATE KEY UPDATE id=id;
 

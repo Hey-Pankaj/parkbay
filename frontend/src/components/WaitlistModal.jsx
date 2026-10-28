@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { X, Clock, UserCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function WaitlistModal({ isOpen, onClose, facility }) {
-  const [name, setName] = useState('Alex Driver');
-  const [vehicle, setVehicle] = useState('KA01MJ4321');
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.full_name || 'Aarav Sharma');
+  const [vehicle, setVehicle] = useState(user?.vehicle_number || 'KA01MJ4321');
   const [hours, setHours] = useState(2);
   const [slotType, setSlotType] = useState('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successInfo, setSuccessInfo] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (user?.full_name) setName(user.full_name);
+    if (user?.vehicle_number) setVehicle(user.vehicle_number);
+  }, [user]);
 
   if (!isOpen) return null;
 

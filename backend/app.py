@@ -868,6 +868,64 @@ def admin_delete_user(user_id):
 
 
 # ==============================================================================
+# USER PERSONAL INFORMATION & PROFILE MANAGEMENT
+# ==============================================================================
+
+@app.route("/api/users/profile", methods=["GET", "PUT", "OPTIONS"])
+def user_profile():
+    if request.method == "OPTIONS":
+        return "", 200
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or request.args.get("email") or "").strip().lower()
+    user_id = data.get("id") or request.args.get("user_id")
+
+    db = SessionLocal()
+    try:
+        user = None
+        if user_id:
+            try:
+                user = db.query(User).filter(User.id == int(user_id)).first()
+            except Exception:
+                pass
+        if not user and email:
+            user = db.query(User).filter(User.email == email).first()
+        if not user:
+            user = db.query(User).filter(User.role == "driver").first() or db.query(User).first()
+
+        if not user:
+            return jsonify({"error": "User account not found."}), 404
+
+        if request.method == "PUT":
+            if "full_name" in data and data["full_name"]:
+                user.full_name = data["full_name"].strip()
+            if "phone" in data:
+                user.phone = data["phone"].strip()
+            if "vehicle_number" in data:
+                user.vehicle_number = data["vehicle_number"].strip().upper()
+            if "vehicle_type" in data:
+                user.vehicle_type = data["vehicle_type"].strip()
+            if "city" in data:
+                user.city = data["city"].strip()
+            if "address" in data:
+                user.address = data["address"].strip()
+            if "emergency_contact" in data:
+                user.emergency_contact = data["emergency_contact"].strip()
+
+            db.commit()
+            db.refresh(user)
+            return jsonify({
+                "ok": True,
+                "message": "Personal Information updated successfully!",
+                "user": user.to_dict()
+            })
+
+        return jsonify({"ok": True, "user": user.to_dict()})
+    finally:
+        db.close()
+
+
+# ==============================================================================
 # HARDWARE / IOT SENSOR & CAMERA ANPR SIMULATION ENDPOINTS
 # ==============================================================================
 

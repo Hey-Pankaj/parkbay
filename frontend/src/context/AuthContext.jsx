@@ -6,7 +6,25 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('parkbay_user');
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      // Auto-cleanup legacy 'Alex Driver' default to authentic Indian Name or derived from user email
+      if (parsed && (parsed.full_name === 'Alex Driver' || parsed.full_name?.toLowerCase().includes('alex driver'))) {
+        if (parsed.email && parsed.email.includes('@') && !parsed.email.toLowerCase().includes('alex')) {
+          const local = parsed.email.split('@')[0].replace(/[0-9._-]+/g, ' ').trim();
+          parsed.full_name = local.length > 1
+            ? local.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+            : 'Aarav Sharma';
+        } else {
+          parsed.full_name = 'Aarav Sharma';
+        }
+        localStorage.setItem('parkbay_user', JSON.stringify(parsed));
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
   });
 
   const [token, setToken] = useState(() => localStorage.getItem('parkbay_token') || null);
@@ -40,6 +58,18 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateUserProfile = async (profileData) => {
+    try {
+      const res = await api.updateProfile(profileData);
+      const updated = res.user || { ...user, ...profileData };
+      setUser(updated);
+      localStorage.setItem('parkbay_user', JSON.stringify(updated));
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -57,7 +87,8 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
-        setUser
+        setUser,
+        updateUserProfile
       }}
     >
       {children}
