@@ -1,40 +1,50 @@
 # ParkBay: Smart Parking Management and Reservation System
 
-**ParkBay** is an enterprise-grade smart parking management and reservation platform designed to streamline urban parking discovery, time-based slot reservations, automated charge calculations, and administrative oversight.
+[![React](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite%205-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
+[![Flask](https://img.shields.io/badge/Backend-Python%203.12%20%7C%20Flask-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Database](https://img.shields.io/badge/Database-MySQL%20%2F%20SQLite-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-The platform features an authentic architectural live bay floor plan, ultrasonic sensor telemetry simulation, optical Automatic Number Plate Recognition (ANPR) camera barrier automation, and dedicated role-separated interfaces for drivers and facility administrators.
+**ParkBay** is an enterprise-grade smart parking management and reservation platform designed to streamline urban parking discovery, time-based slot reservations, automated charge calculations, ultrasonic IoT bay telemetry, ANPR boom barrier automation, and dedicated role-separated interfaces for drivers and facility administrators.
 
 ---
 
 ## 🌟 Key Features
 
-1. **Branded Public Landing Page**:
-   - Modern, high-conversion landing page presenting ParkBay's value proposition, authentic parking facility background, feature pillars, 3-step workflow, and facility previews.
-2. **Dedicated Authentication Portal**:
-   - Clean, role-separated login and registration for Drivers and Facility Administrators.
-3. **Personalized Dashboards**:
-   - **Driver Dashboard**:
-     - Multi-facility selector (Commercial Galleria, Tech Park, Airport Express).
-     - Interactive architectural parking grid (Block A & Block B) with live status badges (Available, Occupied with license plate, Selected, Maintenance, EV Level-2 Fast Charger).
-     - Time-window slot availability calculation (prevents double-booking across overlapping reservations).
-     - Automated charge calculation (base hourly rate, duration multiplier, 18% GST, payment method selection).
-     - Digital reservation pass with reference code (e.g. `PB-98A1F3`).
-     - "My Bookings" manager with instant cancellation & refund processing.
-   - **Admin Dashboard**:
-     - Real-time KPI analytics (Total bays, occupancy percentage, today's revenue, active vehicles count).
-     - New Bay Provisioning tool (configure facility, block, slot code, type, hourly rate, EV charger).
-     - Slot status toggles (Available ⇄ Maintenance ⇄ Blocked).
-     - Master bookings audit table with search and manual release controls.
-4. **Hardware-Assisted Foundation (IoT & ANPR Camera Vision - Admin Exclusive)**:
-   - **Optical ANPR Camera Barrier Gate Simulator**:
-     - Animated boom barrier arm with optical OCR targeting.
-     - Simulates scanning license plates (e.g. `KA01MJ4321`), validates active reservations, timestamps entry, and lifts the barrier.
-     - Rejects unauthorized plates with access denied notifications.
-   - **Ultrasonic Distance Sensor Mesh**:
-     - Live distance telemetry (HC-SR04/JSN-SR04T simulation).
-     - Interactive trigger to toggle vehicle parking and departure with immediate database synchronization.
-5. **FIFO Priority Waitlist Queue**:
-   - When a facility reaches maximum capacity, drivers can join the priority waiting list, automatically claiming vacated slots as vehicles exit.
+### 1. Branded Public Landing Page
+- Modern high-conversion landing page presenting ParkBay's architectural highlights, live facility counters, parking tiers, and 3-step reserve-and-park workflow.
+
+### 2. Personalized Driver Dashboard
+- **Multi-Facility Discovery**: Switch between city-center gallerias, corporate tech hubs, and international airport express terminals.
+- **Interactive Architectural Floor Grid**: Visual block-based layout (Block A & Block B) with live status tags (*Available*, *Occupied with License Plate*, *Selected*, *Maintenance*, *EV Level-2 Fast Charger*).
+- **Time-Window Conflict Avoidance**: Real-time slot availability checking preventing overlapping bookings.
+- **Automated Charge Engine**: Calculates base hourly tariffs, duration multipliers, 18% GST breakdown, and digital payment methods (UPI, Cards, FASTag).
+- **Reservation Passes & Refunds**: Instant digital booking pass with QR reference (e.g. `PB-98A1F3`) and self-service one-click cancellation with immediate refund initiation.
+
+### 3. User Profile & Personal Information Editor
+- **Personal Information Management**: Live editable driver profile (Full Name, Phone Number, City, Address, and Emergency Contact).
+- **Primary Vehicle & FastPass**: Save vehicle registration plate (e.g., `KA01MJ4321`), vehicle category (*Sedan, SUV, EV, Compact, Accessible*), make/model (*Tata Nexon EV, etc.*), and FASTag RFID ID.
+- **Smart Bay Automation Preferences**: Configure automated ANPR barrier opening without manual QR scanning, Level-2 EV charging bay priority, and real-time SMS arrival/expiry alerts.
+
+### 4. Admin Management Center
+- **Live KPI Analytics**: Total facility bays, occupancy percentages, today's gross revenue, and active vehicle counts.
+- **Area-Wise Booking Breakdown**: Occupancy metrics, active allotments, and localized financial summaries across each facility.
+- **Bay Provisioning & Controls**: Provision new bays on the fly, adjust hourly rates, toggle EV charger availability, and switch slot states (*Available ⇄ Maintenance ⇄ Blocked*).
+- **Master Booking Audit & Vehicle Release**: Real-time inspection of active reservations, vehicle plates, driver contacts, and emergency bay release.
+- **User Role Management**: Promote drivers to administrators or adjust user credentials directly from the console.
+
+### 5. Hardware & IoT Simulation (Admin Exclusive)
+- **Optical ANPR Camera Barrier Gate Simulator**:
+  - Animated boom barrier arm with optical OCR targeting.
+  - Simulates scanning incoming vehicle license plates, matching against confirmed reservations, timestamping gate entry, and opening the barrier automatically.
+  - Rejects unregistered vehicles with real-time access denied alerts.
+- **Ultrasonic Distance Sensor Mesh**:
+  - Simulates HC-SR04/JSN-SR04T ultrasonic distance sensors at each bay.
+  - Interactive simulator to occupy or vacate bays with live distance telemetry and battery diagnostics.
+
+### 6. FIFO Priority Waitlist Queue
+- When high-demand parking facilities reach 100% occupancy, drivers can join a prioritized FIFO waiting list, automatically reserving vacated slots as soon as departures are logged.
 
 ---
 
@@ -42,11 +52,11 @@ The platform features an authentic architectural live bay floor plan, ultrasonic
 
 | Layer | Technologies |
 |---|---|
-| **Frontend** | React 18, Vite 5, Tailwind CSS, Lucide Icons |
-| **Backend** | Python 3.12, Flask, Flask-CORS, Werkzeug Security |
-| **Database ORM** | SQLAlchemy 2.0, PyMySQL |
-| **Database** | MySQL 8.x / MariaDB (with seamless local SQLite fallback `parkbay.db`) |
-| **Architecture** | RESTful APIs, Single-Page Application (SPA) |
+| **Frontend** | React 18, Vite 5, Tailwind CSS, Lucide React Icons |
+| **Backend** | Python 3.12, Flask, Flask-CORS, SQLAlchemy 2.0, Werkzeug |
+| **Database** | MySQL 8.x / MariaDB (with zero-config local SQLite fallback `parkbay.db`) |
+| **Containerization** | Docker, Docker Compose, Nginx |
+| **Deployment Ready** | Vercel (Monorepo), Render Blueprint (`render.yaml`), Docker Compose |
 
 ---
 
@@ -55,44 +65,65 @@ The platform features an authentic architectural live bay floor plan, ultrasonic
 ```text
 parkbay/
 ├── backend/
-│   ├── app.py                 # Flask REST backend server
-│   ├── database.py            # SQLAlchemy engine (MySQL + SQLite fallback)
-│   ├── models.py              # User, Facility, Slot, Booking, Sensor models
-│   ├── schema_mysql.sql       # Pure MySQL relational schema DDL
-│   ├── seed_data.py           # Auto-seeder for facilities, bays, and users
+│   ├── app.py                 # Flask REST API backend server & routing
+│   ├── database.py            # SQLAlchemy database engine (MySQL + SQLite fallback)
+│   ├── models.py              # User, Facility, Slot, Booking, Payment, Sensor models
+│   ├── schema_mysql.sql       # Production MySQL schema DDL & initial seed records
+│   ├── seed_data.py           # Auto-seeder for facilities, bays, and localized accounts
+│   ├── parkbay.db             # Zero-config SQLite database for instant local run
 │   ├── requirements.txt       # Python backend dependencies
-│   └── .env.example           # Environment configuration template
+│   ├── Dockerfile             # Production Python Gunicorn container
+│   ├── Procfile               # Process file for PaaS deployments (Render / Railway)
+│   └── .env.example           # Backend environment configuration variables
 ├── frontend/
-│   ├── src/                   # React components, pages, contexts, services
-│   ├── public/                # Static assets, branding icons, parking background
-│   ├── package.json           # Node / React dependencies and build scripts
-│   ├── vite.config.js         # Vite configuration with API proxy to Flask
-│   ├── tailwind.config.js     # Tailwind CSS styles and palette configuration
-│   └── index.html             # Application entrypoint
-└── README.md                  # Project documentation
+│   ├── src/
+│   │   ├── components/        # Navigation, Parking Grid, Booking & Waitlist modals
+│   │   ├── context/           # AuthContext with profile synchronization
+│   │   ├── pages/             # Landing, Login, Driver, Admin, IoT Vision, Profile
+│   │   ├── services/          # Resilient API client with offline fallback engine
+│   │   ├── App.jsx            # Main application router and shell
+│   │   └── main.jsx           # React DOM root entrypoint
+│   ├── public/                # Static assets, SVG icons, parking background
+│   ├── package.json           # Node scripts and dependencies
+│   ├── vite.config.js         # Vite configuration with API proxy
+│   ├── tailwind.config.js     # Tailwind CSS theme and styles
+│   └── Dockerfile             # Multi-stage production Nginx container
+├── docker-compose.yml         # Full-stack Docker Compose (MySQL + Flask + React)
+├── render.yaml                # 1-Click Render Blueprint configuration
+├── vercel.json                # Vercel Monorepo routing configuration
+└── README.md                  # Comprehensive project documentation
 ```
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Install Backend Dependencies & Launch Flask
+### 1. Clone & Set Up Backend
 
 ```bash
 cd backend
 
-# Install Python packages
+# Create virtual environment (optional but recommended)
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Run the Flask backend
+# Start the Flask backend server
 python app.py
 ```
-*The backend server will start on `http://127.0.0.1:5000`.*
-*(If MySQL is not running locally, ParkBay automatically initializes the zero-config SQLite database and seeds default facilities, slots, accounts, and bookings).*
+*The Flask REST API will start on **`http://127.0.0.1:5000`**.*
+*(If MySQL is not running locally, ParkBay automatically falls back to the bundled `parkbay.db` SQLite database with seeded demo data).*
 
-### 2. Install Frontend Dependencies & Launch Vite
+---
 
-In a new terminal window:
+### 2. Set Up Frontend
+
+In a separate terminal window:
 
 ```bash
 cd frontend
@@ -100,67 +131,78 @@ cd frontend
 # Install Node dependencies
 npm install
 
-# Start Vite dev server
+# Start Vite development server
 npm run dev
 ```
 *Open your browser and navigate to: **`http://127.0.0.1:5173/`***
 
 ---
 
-## 👥 Default Accounts
+## 👥 Default Demo Accounts
 
-| Role | Email | Password | Allowed Access |
-|---|---|---|---|
-| **Driver / Owner** | `driver@parkbay.com` | `password123` | Live Bays, Time-based Booking, My Passes |
-| **Facility Admin** | `admin@parkbay.com` | `admin123` | Admin Center, IoT Vision, Slot Provisioning |
+| Role | Email | Password | Pre-configured Name | Features Accessible |
+|---|---|---|---|---|
+| **Driver / Owner** | `driver@parkbay.com` | `password123` | **Aarav Sharma** | Live Bays, Time Booking, My Passes, Personal Info Profile |
+| **Facility Admin** | `admin@parkbay.com` | `admin123` | **ParkBay Admin Officer** | Admin Dashboard, IoT Sensor Mesh, ANPR Vision Camera |
 
----
-
-## 📡 REST API Summary
-
-- `POST /api/auth/login`: Authenticate driver or administrator
-- `POST /api/auth/register`: Create user account
-- `GET /api/facilities`: List active facilities with live availability counts
-- `GET /api/facilities/<id>/slots?start_time=...&end_time=...`: Get slots for time window
-- `POST /api/bookings`: Reserve a parking slot
-- `POST /api/bookings/<id>/cancel`: Cancel booking and refund
-- `GET /api/admin/stats`: Real-time administrative metrics
-- `POST /api/anpr/scan`: Simulate ANPR camera plate scan and boom barrier lift
+*Note: You can also register any new driver or admin account from the registration tab with any name and mobile number.*
 
 ---
 
-## 🚢 Production Deployment
+## 📡 Key REST API Endpoints
 
-ParkBay is pre-configured for instant zero-hassle deployment across multiple environments:
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/login` | Authenticate driver or administrator |
+| `POST` | `/api/auth/register` | Register new user account |
+| `GET/PUT` | `/api/users/profile` | View and update personal information, vehicle, and preferences |
+| `GET` | `/api/facilities` | List all parking facilities with live available bay counters |
+| `GET` | `/api/facilities/<id>/slots` | Retrieve slot matrix for a specific time window |
+| `POST` | `/api/bookings/calculate` | Calculate charges, GST, and duration multiplier |
+| `POST` | `/api/bookings` | Confirm and create parking reservation |
+| `POST` | `/api/bookings/<id>/cancel` | Cancel booking and issue instant refund |
+| `GET` | `/api/admin/stats` | Retrieve facility metrics, occupancy %, and area breakdown |
+| `POST` | `/api/camera/anpr/scan` | ANPR plate recognition & boom barrier automation |
+| `POST` | `/api/iot/sensors/<code>/simulate` | Simulate ultrasonic sensor occupancy change |
 
-### Option A: One-Command Docker Compose (VPS, AWS, DigitalOcean)
+---
 
-The repository includes a complete multi-container setup with MySQL 8.0, Flask (Gunicorn), and React (Nginx):
+## 🚢 Production Deployment Options
+
+### Option 1: Docker Compose (Full Stack)
+
+Run the entire stack (MySQL 8, Flask Gunicorn, React Nginx) with a single command:
 
 ```bash
 docker compose up -d --build
 ```
-- **Web Application**: Accessible at `http://your-server-ip:80`
+- **Web App**: `http://localhost:80`
 - **Backend API**: Reverse-proxied automatically through Nginx `/api/`
-- **Database**: Initialized with auto-seeded facilities and persistent storage volume
 
-### Option B: 1-Click Free Cloud Deployment (Render)
+---
 
-1. Fork or push this repository to GitHub.
+### Option 2: 1-Click Cloud Deployment (Render)
+
+1. Push your repository to GitHub.
 2. Sign in to [Render](https://render.com).
-3. Click **New +** ➔ **Blueprint**, select your `parkbay` repository.
-4. Render will automatically read `render.yaml` and provision both:
-   - **`parkbay-backend`** (Python web service with Gunicorn)
-   - **`parkbay-frontend`** (Static site with SPA rewrite rules)
+3. Click **New +** ➔ **Blueprint**, and select your repository.
+4. Render will read `render.yaml` to deploy both frontend and backend automatically.
 
-### Option C: Split Hosting (Vercel + Railway / Render)
+---
 
-- **Frontend on Vercel**:
-  - Connect your repo on Vercel, set root directory to `frontend`.
-  - Add Environment Variable: `VITE_API_URL=https://your-backend-api.onrender.com`.
-  - Build command: `npm run build`, output directory: `dist`.
-- **Backend on Railway / Render**:
-  - Set root directory to `backend`.
-  - Build command: `pip install -r requirements.txt`.
-  - Start command: `gunicorn app:app --bind 0.0.0.0:$PORT`.
+### Option 3: Split Hosting (Vercel Frontend + Render/Railway Backend)
 
+1. **Frontend on Vercel**:
+   - Set root directory to `frontend`.
+   - Set Environment Variable: `VITE_API_URL=https://your-backend.onrender.com`.
+   - Build Command: `npm run build`, Output Directory: `dist`.
+2. **Backend on Render / Railway**:
+   - Set root directory to `backend`.
+   - Build Command: `pip install -r requirements.txt`.
+   - Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT`.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.

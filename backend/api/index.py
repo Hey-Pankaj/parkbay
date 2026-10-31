@@ -7,5 +7,3 @@ if backend_root not in sys.path:
     sys.path.insert(0, backend_root)
 
 from app import app
-
-# Vercel looks for the WSGI application object named `app`
