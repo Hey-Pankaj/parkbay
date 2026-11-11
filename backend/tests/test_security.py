@@ -81,6 +81,18 @@ class SecurityAuthorizationTests(unittest.TestCase):
         db.commit()
         self.booking_id = booking.id
         self.driver_id = self.driver.id
+        driver_booking = Booking(
+            booking_ref="PB-TEST-02", user_id=self.driver.id,
+            facility_id=facility.id, slot_id=slot.id,
+            vehicle_number="MH02CD5678", vehicle_type="sedan",
+            driver_name=self.driver.full_name, start_time=datetime.utcnow(),
+            end_time=datetime.utcnow() + timedelta(hours=2), total_hours=2.0,
+            hourly_rate=20.0, estimated_amount=47.2, paid_amount=47.2,
+            booking_status="active", payment_status="paid",
+        )
+        db.add(driver_booking)
+        db.commit()
+        self.driver_booking_id = driver_booking.id
         db.close()
         self.admin_token = parkbay_app.TOKEN_SERIALIZER.dumps({"user_id": self.admin_id})
         self.driver_token = parkbay_app.TOKEN_SERIALIZER.dumps({"user_id": self.driver_id})
@@ -119,6 +131,13 @@ class SecurityAuthorizationTests(unittest.TestCase):
             headers={"Authorization": f"Bearer {self.driver_token}"},
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_driver_can_release_own_booking(self):
+        response = self.client.post(
+            f"/api/bookings/{self.driver_booking_id}/release",
+            headers={"Authorization": f"Bearer {self.driver_token}"},
+        )
+        self.assertEqual(response.status_code, 200)
 
     def test_driver_booking_list_cannot_be_switched_to_another_user(self):
         response = self.client.get(
