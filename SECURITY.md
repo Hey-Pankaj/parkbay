@@ -5,7 +5,7 @@
 - Public registration always creates a `driver`; it cannot assign `admin`.
 - Login returns a signed, time-limited bearer token. Protected routes validate the signature and expiry and reload the user's current role from the database.
 - Administrative endpoints require an authenticated administrator. Driver booking queries and profile operations are scoped to the authenticated account.
-- Booking creation uses the authenticated account's name and phone rather than trusting client-supplied identity fields. Booking cancellation checks ownership; release is administrator-only.
+- Booking creation uses the authenticated account's name and phone rather than trusting client-supplied identity fields. Booking cancellation and release check ownership; administrators may manage all bookings.
 - IoT telemetry/simulation and ANPR simulation require administrator authorization.
 - The frontend sends the bearer token and no longer fabricates local login, bookings, or admin users when the API is unavailable.
 - Login and registration are rate-limited. CORS is restricted to configured origins.
