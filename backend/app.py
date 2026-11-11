@@ -187,6 +187,19 @@ def login():
         db.close()
 
 
+@app.get("/api/auth/me")
+@require_auth
+def current_user():
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == g.current_user_id).first()
+        if not user:
+            return jsonify({"error": "User account not found."}), 404
+        return jsonify({"user": user.to_dict()})
+    finally:
+        db.close()
+
+
 # ==============================================================================
 # FACILITIES & REAL-TIME AVAILABILITY ENDPOINTS
 # ==============================================================================
