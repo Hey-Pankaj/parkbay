@@ -411,9 +411,7 @@ def create_booking():
     hours_input = data.get("hours")
     payment_method = data.get("payment_method", "upi")
 
-    # Validation
-    if not driver_name:
-        return jsonify({"error": "Driver name is required."}), 400
+    # Validate client-controlled booking fields; driver identity is loaded from the session.
     if not vehicle_number or not PLATE_REGEX.match(vehicle_number):
         return jsonify({"error": "Please provide a valid vehicle license plate (e.g., KA01MJ4321)."}), 400
 
