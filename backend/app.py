@@ -2,8 +2,12 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, send_from_directory
+from functools import wraps
+from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_, desc
 
@@ -12,9 +16,19 @@ from models import User, ParkingFacility, ParkingSlot, Booking, Payment, SensorT
 from seed_data import seed_database
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "parkbay_secure_jwt_token_secret_key_2026")
+_secret_key = os.getenv("SECRET_KEY")
+_is_production = os.getenv("FLASK_ENV", "development").lower() == "production"
+if _is_production and not _secret_key:
+    raise RuntimeError("SECRET_KEY must be configured in production.")
+app.config["SECRET_KEY"] = _secret_key or os.urandom(32)
 app.url_map.strict_slashes = False
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+_allowed_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if origin.strip()]
+if _is_production and not os.getenv("CORS_ORIGINS"):
+    raise RuntimeError("CORS_ORIGINS must be configured in production.")
+CORS(app, resources={r"/api/*": {"origins": _allowed_origins}}, supports_credentials=False)
+TOKEN_SERIALIZER = URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="parkbay-auth-v1")
+TOKEN_MAX_AGE_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", "43200"))
+limiter = Limiter(get_remote_address, app=app, default_limits=[], storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"))
 
 class ApiPrefixMiddleware:
     """Ensures requests both with /api and without /api are handled correctly on serverless platforms."""
@@ -29,21 +43,50 @@ class ApiPrefixMiddleware:
 
 app.wsgi_app = ApiPrefixMiddleware(app.wsgi_app)
 
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = app.make_default_options_response()
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
-        return response
+def _authenticate_request():
+    header = request.headers.get("Authorization", "")
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return jsonify({"error": "Authentication required."}), 401
+    try:
+        payload = TOKEN_SERIALIZER.loads(token, max_age=TOKEN_MAX_AGE_SECONDS)
+        user_id = int(payload.get("user_id"))
+    except (BadSignature, SignatureExpired, TypeError, ValueError, AttributeError):
+        return jsonify({"error": "Invalid or expired authentication token."}), 401
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return jsonify({"error": "User account is no longer available."}), 401
+        g.current_user_id = user.id
+        g.current_user_role = user.role
+        g.current_user_name = user.full_name
+        g.current_user_email = user.email
+    finally:
+        db.close()
+    return None
 
-@app.after_request
-def after_request_cors(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
-    return response
+
+def require_auth(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        failure = _authenticate_request()
+        if failure:
+            return failure
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def require_admin(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        failure = _authenticate_request()
+        if failure:
+            return failure
+        if g.current_user_role != "admin":
+            return jsonify({"error": "Administrator access required."}), 403
+        return view(*args, **kwargs)
+    return wrapped
 
 # Auto-initialize database tables and seed initial records (runs in both Gunicorn, direct, and Vercel serverless mode)
 try:
@@ -82,12 +125,13 @@ def parse_iso_datetime(dt_str):
 # ==============================================================================
 
 @app.post("/api/auth/register")
+@limiter.limit("5 per minute")
 def register():
     data = request.get_json(silent=True) or {}
     name = (data.get("full_name") or "").strip()
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
-    role = data.get("role", "driver")
+    # Public registration can only create driver accounts; admin provisioning is separate.
     phone = (data.get("phone") or "").strip()
 
     if not name or len(name) < 2:
@@ -107,7 +151,7 @@ def register():
             full_name=name,
             email=email,
             password_hash=generate_password_hash(password),
-            role="admin" if role == "admin" else "driver",
+            role="driver",
             phone=phone
         )
         db.add(user)
@@ -119,6 +163,7 @@ def register():
 
 
 @app.post("/api/auth/login")
+@limiter.limit("5 per minute")
 def login():
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
@@ -133,9 +178,9 @@ def login():
         if not user or not check_password_hash(user.password_hash, password):
             return jsonify({"error": "Invalid email or password."}), 401
 
-        # Return simulated auth payload
+        # Signed, time-limited bearer token; role is reloaded from the database on every request.
         return jsonify({
-            "token": f"token-{user.id}-{uuid.uuid4().hex[:8]}",
+            "token": TOKEN_SERIALIZER.dumps({"user_id": user.id}),
             "user": user.to_dict()
         })
     finally:
@@ -338,11 +383,12 @@ def calculate_charges():
 
 
 @app.post("/api/bookings")
+@require_auth
 def create_booking():
     data = request.get_json(silent=True) or {}
     facility_id = data.get("facility_id")
     slot_id = data.get("slot_id")
-    user_id = data.get("user_id") or 1 # fallback demo driver
+    user_id = g.current_user_id
     driver_name = (data.get("driver_name") or "").strip()
     driver_phone = (data.get("driver_phone") or "").strip()
     vehicle_number = re.sub(r"\s+", "", (data.get("vehicle_number") or "").upper())
@@ -374,19 +420,12 @@ def create_booking():
 
     db = SessionLocal()
     try:
-        # Check if user exists, else pick first driver
+        # The authenticated identity is authoritative; never trust a client-supplied user_id.
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            user = db.query(User).filter(User.role == "driver").first()
-            if not user:
-                user = User(
-                    full_name=driver_name,
-                    email=f"driver_{uuid.uuid4().hex[:4]}@parkbay.com",
-                    password_hash=generate_password_hash("password123"),
-                    role="driver"
-                )
-                db.add(user)
-                db.flush()
+            return jsonify({"error": "Authenticated user account not found."}), 401
+        if not driver_name:
+            driver_name = user.full_name
 
         # If slot_id is provided, verify it
         slot = None
@@ -503,17 +542,20 @@ def create_booking():
 
 
 @app.get("/api/bookings")
+@require_auth
 def get_bookings():
-    """Returns bookings. If user_id passed, filters by user. If admin, returns all."""
-    user_id = request.args.get("user_id")
+    """Drivers see only their own bookings; admins may optionally filter by user."""
+    requested_user_id = request.args.get("user_id") if g.current_user_role == "admin" else None
     facility_id = request.args.get("facility_id")
     status = request.args.get("status")
 
     db = SessionLocal()
     try:
         query = db.query(Booking).order_by(desc(Booking.created_at))
-        if user_id:
-            query = query.filter(Booking.user_id == int(user_id))
+        if g.current_user_role != "admin":
+            query = query.filter(Booking.user_id == g.current_user_id)
+        elif requested_user_id:
+            query = query.filter(Booking.user_id == int(requested_user_id))
         if facility_id:
             query = query.filter(Booking.facility_id == int(facility_id))
         if status:
@@ -526,12 +568,15 @@ def get_bookings():
 
 
 @app.post("/api/bookings/<int:booking_id>/cancel")
+@require_auth
 def cancel_booking(booking_id):
     db = SessionLocal()
     try:
         booking = db.query(Booking).filter(Booking.id == booking_id).first()
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
+        if g.current_user_role != "admin" and booking.user_id != g.current_user_id:
+            return jsonify({"error": "You can only cancel your own bookings."}), 403
 
         if booking.booking_status in ["completed", "cancelled"]:
             return jsonify({"error": f"Booking is already {booking.booking_status}."}), 400
@@ -551,6 +596,7 @@ def cancel_booking(booking_id):
 
 
 @app.post("/api/bookings/<int:booking_id>/release")
+@require_admin
 def release_booking(booking_id):
     """Mark an active booking as completed and vehicle exited."""
     db = SessionLocal()
@@ -590,6 +636,7 @@ def release_booking(booking_id):
 # ==============================================================================
 
 @app.get("/api/waitlist")
+@require_admin
 def get_waitlist():
     facility_id = request.args.get("facility_id", type=int)
     items = WAITLIST
@@ -599,6 +646,7 @@ def get_waitlist():
 
 
 @app.post("/api/waitlist")
+@require_auth
 def join_waitlist():
     data = request.get_json(silent=True) or {}
     facility_id = data.get("facility_id") or 1
@@ -632,6 +680,7 @@ def join_waitlist():
 # ==============================================================================
 
 @app.get("/api/admin/stats")
+@require_admin
 def get_admin_stats():
     db = SessionLocal()
     try:
@@ -713,6 +762,7 @@ def get_admin_stats():
 
 
 @app.post("/api/admin/slots")
+@require_admin
 def add_slot():
     data = request.get_json(silent=True) or {}
     facility_id = data.get("facility_id")
@@ -764,6 +814,7 @@ def add_slot():
 
 
 @app.put("/api/admin/slots/<int:slot_id>/status")
+@require_admin
 def update_slot_status(slot_id):
     data = request.get_json(silent=True) or {}
     new_status = data.get("status") # 'available', 'maintenance', 'blocked'
@@ -785,6 +836,7 @@ def update_slot_status(slot_id):
 
 
 @app.get("/api/admin/users")
+@require_admin
 def get_all_users():
     db = SessionLocal()
     try:
@@ -803,6 +855,7 @@ def get_all_users():
 
 
 @app.put("/api/admin/users/<int:user_id>/role")
+@require_admin
 def update_user_role(user_id):
     data = request.get_json(silent=True) or {}
     new_role = (data.get("role") or "").strip().lower()
@@ -822,16 +875,19 @@ def update_user_role(user_id):
 
 
 @app.post("/api/admin/users")
+@require_admin
 def admin_create_user():
     data = request.get_json(silent=True) or {}
     name = (data.get("full_name") or "").strip()
     email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or "password123"
+    password = data.get("password") or ""
     role = (data.get("role") or "driver").strip().lower()
     phone = (data.get("phone") or "").strip()
 
-    if not name or not email:
-        return jsonify({"error": "Full name and email are required."}), 400
+    if not name or len(name) < 2 or not email or "@" not in email:
+        return jsonify({"error": "A valid full name and email are required."}), 400
+    if len(password) < 12:
+        return jsonify({"error": "Password must be at least 12 characters."}), 400
 
     db = SessionLocal()
     try:
@@ -854,6 +910,7 @@ def admin_create_user():
 
 
 @app.delete("/api/admin/users/<int:user_id>")
+@require_admin
 def admin_delete_user(user_id):
     db = SessionLocal()
     try:
@@ -871,27 +928,13 @@ def admin_delete_user(user_id):
 # USER PERSONAL INFORMATION & PROFILE MANAGEMENT
 # ==============================================================================
 
-@app.route("/api/users/profile", methods=["GET", "PUT", "OPTIONS"])
+@app.route("/api/users/profile", methods=["GET", "PUT"])
+@require_auth
 def user_profile():
-    if request.method == "OPTIONS":
-        return "", 200
-
     data = request.get_json(silent=True) or {}
-    email = (data.get("email") or request.args.get("email") or "").strip().lower()
-    user_id = data.get("id") or request.args.get("user_id")
-
     db = SessionLocal()
     try:
-        user = None
-        if user_id:
-            try:
-                user = db.query(User).filter(User.id == int(user_id)).first()
-            except Exception:
-                pass
-        if not user and email:
-            user = db.query(User).filter(User.email == email).first()
-        if not user:
-            user = db.query(User).filter(User.role == "driver").first() or db.query(User).first()
+        user = db.query(User).filter(User.id == g.current_user_id).first()
 
         if not user:
             return jsonify({"error": "User account not found."}), 404
@@ -930,6 +973,7 @@ def user_profile():
 # ==============================================================================
 
 @app.get("/api/iot/sensors")
+@require_admin
 def get_sensor_telemetry():
     db = SessionLocal()
     try:
@@ -940,6 +984,7 @@ def get_sensor_telemetry():
 
 
 @app.post("/api/iot/sensors/<sensor_code>/simulate")
+@require_admin
 def simulate_sensor_event(sensor_code):
     """
     Simulates hardware ultrasonic distance change (e.g. car parked or vacated).
@@ -975,6 +1020,7 @@ def simulate_sensor_event(sensor_code):
 
 
 @app.post("/api/camera/anpr/scan")
+@require_admin
 def simulate_anpr_camera():
     """
     Simulates Automatic Number Plate Recognition (ANPR) camera scanning a plate at Entry Barrier.
