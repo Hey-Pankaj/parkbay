@@ -1,4 +1,6 @@
 import uuid
+import os
+import secrets
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 from database import engine, Base, SessionLocal
@@ -16,21 +18,26 @@ def seed_database():
         print("[ParkBay Seed] Seeding database with initial facilities, slots, users, and IoT sensors...")
 
         # 1. Create Default Users
-        admin_user = User(
-            full_name="ParkBay Admin Officer",
-            email="admin@parkbay.com",
-            password_hash=generate_password_hash("admin123"),
-            role="admin",
-            phone="+91 80 4123 5678"
-        )
+        # Never seed predictable public credentials. Provision administrators out of band.
+        driver_email = os.getenv("SEED_DRIVER_EMAIL", "demo-driver@parkbay.invalid")
         driver_user = User(
-            full_name="Aarav Sharma",
-            email="driver@parkbay.com",
-            password_hash=generate_password_hash("password123"),
+            full_name="Demo Driver",
+            email=driver_email,
+            password_hash=generate_password_hash(secrets.token_urlsafe(48)),
             role="driver",
-            phone="+91 98765 43210"
         )
-        db.add_all([admin_user, driver_user])
+        db.add(driver_user)
+        admin_email = os.getenv("INITIAL_ADMIN_EMAIL", "").strip().lower()
+        admin_password = os.getenv("INITIAL_ADMIN_PASSWORD", "")
+        if admin_email and admin_password:
+            if len(admin_password) < 16 or "@" not in admin_email:
+                raise ValueError("INITIAL_ADMIN_EMAIL must be valid and INITIAL_ADMIN_PASSWORD must be at least 16 characters.")
+            db.add(User(
+                full_name=os.getenv("INITIAL_ADMIN_NAME", "ParkBay Administrator"),
+                email=admin_email,
+                password_hash=generate_password_hash(admin_password),
+                role="admin",
+            ))
         db.flush()
 
         # 2. Facilities

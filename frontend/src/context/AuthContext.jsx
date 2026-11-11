@@ -4,93 +4,68 @@ import { api } from '../services/api';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('parkbay_user');
-    if (!saved) return null;
-    try {
-      const parsed = JSON.parse(saved);
-      // Auto-cleanup legacy 'Alex Driver' default to authentic Indian Name or derived from user email
-      if (parsed && (parsed.full_name === 'Alex Driver' || parsed.full_name?.toLowerCase().includes('alex driver'))) {
-        if (parsed.email && parsed.email.includes('@') && !parsed.email.toLowerCase().includes('alex')) {
-          const local = parsed.email.split('@')[0].replace(/[0-9._-]+/g, ' ').trim();
-          parsed.full_name = local.length > 1
-            ? local.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-            : 'Aarav Sharma';
-        } else {
-          parsed.full_name = 'Aarav Sharma';
-        }
-        localStorage.setItem('parkbay_user', JSON.stringify(parsed));
-      }
-      return parsed;
-    } catch {
-      return null;
-    }
-  });
+  const [token, setToken] = useState(() => localStorage.getItem('parkbay_token'));
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [token, setToken] = useState(() => localStorage.getItem('parkbay_token') || null);
-
+  // A cached user object is display data, not proof of identity. Verify every
+  // persisted token with the API before treating the browser as authenticated.
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('parkbay_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('parkbay_user');
+    let active = true;
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return () => { active = false; };
     }
-  }, [user]);
+    setIsLoading(true);
+    api.getCurrentUser()
+      .then((res) => { if (active) setUser(res.user || null); })
+      .catch(() => {
+        if (active) {
+          localStorage.removeItem('parkbay_token');
+          setToken(null);
+          setUser(null);
+        }
+      })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [token]);
 
   const login = async (email, password) => {
-    try {
-      const res = await api.login(email, password);
-      setUser(res.user);
-      setToken(res.token);
-      localStorage.setItem('parkbay_token', res.token);
-      return res;
-    } catch (err) {
-      throw err;
-    }
+    const res = await api.login(email, password);
+    localStorage.setItem('parkbay_token', res.token);
+    setToken(res.token);
+    setUser(res.user);
+    return res;
   };
 
-  const register = async (userData) => {
-    try {
-      const res = await api.register(userData);
-      return res;
-    } catch (err) {
-      throw err;
-    }
-  };
+  const register = async (userData) => api.register(userData);
 
   const updateUserProfile = async (profileData) => {
-    try {
-      const res = await api.updateProfile(profileData);
-      const updated = res.user || { ...user, ...profileData };
-      setUser(updated);
-      localStorage.setItem('parkbay_user', JSON.stringify(updated));
-      return res;
-    } catch (err) {
-      throw err;
-    }
+    const res = await api.updateProfile(profileData);
+    setUser(res.user || { ...user, ...profileData });
+    return res;
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('parkbay_user');
     localStorage.removeItem('parkbay_token');
+    localStorage.removeItem('parkbay_user');
+    setToken(null);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!user,
-        isAdmin: user?.role === 'admin',
-        login,
-        register,
-        logout,
-        setUser,
-        updateUserProfile
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      token,
+      isLoading,
+      isAuthenticated: !!user && !!token,
+      isAdmin: user?.role === 'admin',
+      login,
+      register,
+      logout,
+      updateUserProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );

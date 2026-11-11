@@ -6,12 +6,12 @@ services:
     container_name: parkbay-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: smart_parking_db
       MYSQL_USER: parkbay_user
-      MYSQL_PASSWORD: parkbay_secure_password
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/schema_mysql.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -31,9 +31,14 @@ services:
       MYSQL_HOST: db
       MYSQL_PORT: 3306
       MYSQL_USER: parkbay_user
-      MYSQL_PASSWORD: parkbay_secure_password
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
       MYSQL_DB: smart_parking_db
-      SECRET_KEY: parkbay_production_jwt_secret_2026
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      FLASK_ENV: production
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS in .env}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:?Set INITIAL_ADMIN_EMAIL in .env}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD in .env}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-ParkBay Administrator}
     ports:
       - "5000:5000"
     depends_on:
