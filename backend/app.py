@@ -402,7 +402,7 @@ def create_booking():
     facility_id = data.get("facility_id")
     slot_id = data.get("slot_id")
     user_id = g.current_user_id
-    driver_name = (data.get("driver_name") or "").strip()
+    driver_name = ""
     driver_phone = (data.get("driver_phone") or "").strip()
     vehicle_number = re.sub(r"\s+", "", (data.get("vehicle_number") or "").upper())
     vehicle_type = data.get("vehicle_type", "sedan")
@@ -437,8 +437,7 @@ def create_booking():
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return jsonify({"error": "Authenticated user account not found."}), 401
-        if not driver_name:
-            driver_name = user.full_name
+        driver_name = user.full_name
 
         # If slot_id is provided, verify it
         slot = None
@@ -510,7 +509,7 @@ def create_booking():
             vehicle_number=vehicle_number,
             vehicle_type=vehicle_type,
             driver_name=driver_name,
-            driver_phone=driver_phone or user.phone,
+            driver_phone=user.phone,
             start_time=req_start,
             end_time=req_end,
             total_hours=total_hours,
