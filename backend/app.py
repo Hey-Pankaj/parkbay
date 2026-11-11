@@ -138,8 +138,8 @@ def register():
         return jsonify({"error": "Full name is required."}), 400
     if not email or "@" not in email:
         return jsonify({"error": "A valid email address is required."}), 400
-    if not password or len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters."}), 400
+    if not password or len(password) < 12:
+        return jsonify({"error": "Password must be at least 12 characters."}), 400
 
     db = SessionLocal()
     try:
@@ -302,8 +302,6 @@ def get_facility_slots(facility_id):
                 slot_data["active_booking"] = {
                     "id": booking.id,
                     "booking_ref": booking.booking_ref,
-                    "driver_name": booking.driver_name,
-                    "vehicle_number": booking.vehicle_number,
                     "start_time": booking.start_time.isoformat(),
                     "end_time": booking.end_time.isoformat(),
                     "status": booking.booking_status
