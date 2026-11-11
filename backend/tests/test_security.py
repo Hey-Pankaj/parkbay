@@ -38,8 +38,9 @@ class SecurityAuthorizationTests(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self):
+        Base.metadata.drop_all(bind=self.engine)
+        Base.metadata.create_all(bind=self.engine)
         db = self.Session()
-        db.query(User).delete()
         self.admin = User(
             full_name="Test Admin",
             email="admin@test.invalid",
