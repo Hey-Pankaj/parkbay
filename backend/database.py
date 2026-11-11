@@ -10,37 +10,51 @@ logger = logging.getLogger("ParkBayDB")
 MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
 MYSQL_PORT = os.getenv("MYSQL_PORT", "3306")
 MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "password")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 MYSQL_DB = os.getenv("MYSQL_DB", "smart_parking_db")
+IS_PRODUCTION = os.getenv("FLASK_ENV", "development").lower() == "production"
 
 # If an explicit DATABASE_URL is set, prioritize it
 EXPLICIT_DB_URL = os.getenv("DATABASE_URL")
 
 def get_engine():
     """
-    Attempts to connect to MySQL database.
-    If MySQL server is unavailable or fails, gracefully falls back to local SQLite.
+    Connect to the configured database. SQLite fallback is development-only.
     """
     if EXPLICIT_DB_URL:
         try:
             engine = create_engine(EXPLICIT_DB_URL, pool_recycle=3600)
-            with engine.connect() as conn:
-                logger.info(f"Connected to explicitly configured database: {EXPLICIT_DB_URL}")
+            with engine.connect():
+                logger.info("Connected to explicitly configured database.")
             return engine
-        except Exception as e:
-            logger.warning(f"Could not connect to explicit DATABASE_URL ({e}). Falling back.")
+        except Exception:
+            logger.exception("Could not connect to explicitly configured DATABASE_URL.")
+            if IS_PRODUCTION:
+                raise
+            logger.warning("Falling back to local SQLite for development.")
 
-    # Try MySQL with PyMySQL driver
-    mysql_url = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
+    # Production must have an explicit durable database URL.
+    if IS_PRODUCTION and not EXPLICIT_DB_URL:
+        raise RuntimeError("DATABASE_URL must be configured in production.")
+    if not MYSQL_PASSWORD and not IS_PRODUCTION:
+        logger.warning("MYSQL_PASSWORD is unset; local MySQL may reject the connection.")
+    from sqlalchemy.engine import URL
+    mysql_url = URL.create(
+        "mysql+pymysql", username=MYSQL_USER, password=MYSQL_PASSWORD,
+        host=MYSQL_HOST, port=int(MYSQL_PORT), database=MYSQL_DB,
+        query={"charset": "utf8mb4"}
+    )
     try:
         engine = create_engine(mysql_url, pool_recycle=3600, pool_pre_ping=True)
         with engine.connect() as conn:
             logger.info(f"Successfully connected to MySQL database '{MYSQL_DB}' at {MYSQL_HOST}:{MYSQL_PORT}")
         return engine
-    except Exception as e:
-        logger.info(f"[Notice] MySQL server at {MYSQL_HOST}:{MYSQL_PORT} not reachable ({e}).")
-        logger.info("[Notice] Switching to SQLite fallback (parkbay.db) so you can run the app immediately.")
-        
+    except Exception:
+        logger.exception("Unable to connect to the configured MySQL database.")
+        if IS_PRODUCTION:
+            raise
+        logger.info("Switching to SQLite fallback for local development only.")
+
         # On Vercel or other serverless containers, only /tmp is writable
         if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
             sqlite_path = os.path.join("/tmp", "parkbay.db")
