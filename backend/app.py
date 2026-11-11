@@ -604,7 +604,7 @@ def cancel_booking(booking_id):
 
 
 @app.post("/api/bookings/<int:booking_id>/release")
-@require_admin
+@require_auth
 def release_booking(booking_id):
     """Mark an active booking as completed and vehicle exited."""
     db = SessionLocal()
@@ -612,6 +612,8 @@ def release_booking(booking_id):
         booking = db.query(Booking).filter(Booking.id == booking_id).first()
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
+        if g.current_user_role != "admin" and booking.user_id != g.current_user_id:
+            return jsonify({"error": "You can only release your own bookings."}), 403
 
         booking.booking_status = "completed"
         booking.anpr_exit_time = datetime.utcnow()
