@@ -34,8 +34,8 @@ def get_engine():
             logger.warning("Falling back to local SQLite for development.")
 
     # Production must have an explicit durable database URL.
-    if IS_PRODUCTION and not EXPLICIT_DB_URL:
-        raise RuntimeError("DATABASE_URL must be configured in production.")
+    if IS_PRODUCTION and (not MYSQL_USER or not MYSQL_PASSWORD):
+        raise RuntimeError("MYSQL_USER and MYSQL_PASSWORD must be configured in production.")
     if not MYSQL_PASSWORD and not IS_PRODUCTION:
         logger.warning("MYSQL_PASSWORD is unset; local MySQL may reject the connection.")
     from sqlalchemy.engine import URL
