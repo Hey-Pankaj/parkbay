@@ -67,32 +67,31 @@ export default function Navbar({ activeTab, setActiveTab, onOpenAuthModal }) {
 
             {/* Admin-only panels */}
             {isAdmin && (
-              <>
-                <button
-                  onClick={() => setActiveTab('admin')}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === 'admin'
-                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                      : 'text-slate-300 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4 text-amber-400" />
-                  Admin Center
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('iot-vision')}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === 'iot-vision'
-                      ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                      : 'text-slate-300 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
-                  IoT & Camera Vision
-                </button>
-              </>
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === 'admin'
+                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4 text-amber-400" />
+                Admin Center
+              </button>
             )}
+
+            {/* AI Vision & Detection Camera Feed (Available to all users) */}
+            <button
+              onClick={() => setActiveTab('iot-vision')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'iot-vision'
+                  ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+              AI Vision Detection
+            </button>
             {/* Profile Navigation */}
             {user && (
               <button
@@ -180,23 +179,22 @@ export default function Navbar({ activeTab, setActiveTab, onOpenAuthModal }) {
         )}
 
         {isAdmin && (
-          <>
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`flex flex-col items-center gap-1 ${activeTab === 'admin' ? 'text-amber-400' : 'text-slate-400'}`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Admin</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('iot-vision')}
-              className={`flex flex-col items-center gap-1 ${activeTab === 'iot-vision' ? 'text-cyan-400' : 'text-slate-400'}`}
-            >
-              <Radio className="w-4 h-4" />
-              <span>IoT Sim</span>
-            </button>
-          </>
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'admin' ? 'text-amber-400' : 'text-slate-400'}`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Admin</span>
+          </button>
         )}
+
+        <button
+          onClick={() => setActiveTab('iot-vision')}
+          className={`flex flex-col items-center gap-1 ${activeTab === 'iot-vision' ? 'text-cyan-400' : 'text-slate-400'}`}
+        >
+          <Radio className="w-4 h-4" />
+          <span>Vision AI</span>
+        </button>
 
         {user && (
           <button

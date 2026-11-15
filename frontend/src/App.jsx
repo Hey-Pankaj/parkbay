@@ -65,8 +65,8 @@ function MainApp() {
           setActiveTab('admin');
         }
       } else {
-        // Driver / regular user accesses 'explore', 'my-bookings', or 'profile'
-        if (activeTab === 'admin' || activeTab === 'iot-vision') {
+        // Driver / regular user accesses 'explore', 'my-bookings', 'iot-vision', or 'profile'
+        if (activeTab === 'admin') {
           setActiveTab('explore');
         }
       }
@@ -234,6 +234,13 @@ function MainApp() {
                       Manage Allotments & Users
                     </button>
                     <button
+                      onClick={() => setActiveTab('iot-vision')}
+                      className="px-4 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+                    >
+                      <Radio className="w-3.5 h-3.5 text-cyan-400" />
+                      Live AI Vision
+                    </button>
+                    <button
                       onClick={() => setActiveTab('profile')}
                       className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all flex items-center gap-1.5"
                     >
@@ -243,6 +250,13 @@ function MainApp() {
                   </>
                 ) : (
                   <>
+                    <button
+                      onClick={() => setActiveTab('iot-vision')}
+                      className="px-4 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+                    >
+                      <Radio className="w-3.5 h-3.5 text-cyan-400" />
+                      Live AI Vision
+                    </button>
                     <button
                       onClick={() => setActiveTab('my-bookings')}
                       className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
@@ -288,13 +302,10 @@ function MainApp() {
           />
         )}
 
-        {/* IoT Sensor & Camera Vision Page (Restricted to Facility Admin) */}
-        {activeTab === 'iot-vision' && isAdmin && (
+        {/* Smart Parking Lot Slot Detection & AI Camera Vision Page */}
+        {activeTab === 'iot-vision' && (
           <IoTVisionPage
-            slots={slots}
-            onRefreshSlots={() => {
-              if (selectedFacility) fetchFacilitySlots(selectedFacility.id, startTime, durationHours);
-            }}
+            onGoToExplore={() => setActiveTab('explore')}
           />
         )}
 
