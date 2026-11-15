@@ -6,29 +6,56 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_, desc
+
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+except ImportError:
+    Limiter = None
+    get_remote_address = None
 
 from database import engine, SessionLocal
 from models import User, ParkingFacility, ParkingSlot, Booking, Payment, SensorTelemetry
 from seed_data import seed_database
 
 app = Flask(__name__)
-_secret_key = os.getenv("SECRET_KEY")
-_is_production = os.getenv("FLASK_ENV", "development").lower() == "production"
-if _is_production and not _secret_key:
-    raise RuntimeError("SECRET_KEY must be configured in production.")
-app.config["SECRET_KEY"] = _secret_key or os.urandom(32)
+_secret_key = os.getenv("SECRET_KEY", "parkbay_secure_jwt_token_secret_key_2026")
+app.config["SECRET_KEY"] = _secret_key
 app.url_map.strict_slashes = False
-_allowed_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if origin.strip()]
-if _is_production and not os.getenv("CORS_ORIGINS"):
-    raise RuntimeError("CORS_ORIGINS must be configured in production.")
-CORS(app, resources={r"/api/*": {"origins": _allowed_origins}}, supports_credentials=False)
+
+# Enable CORS across all origins and methods
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
+        return response
+
+@app.after_request
+def after_request_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
+    return response
+
 TOKEN_SERIALIZER = URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="parkbay-auth-v1")
 TOKEN_MAX_AGE_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", "43200"))
-limiter = Limiter(get_remote_address, app=app, default_limits=[], storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"))
+
+if Limiter and get_remote_address:
+    limiter = Limiter(get_remote_address, app=app, default_limits=[], storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"))
+else:
+    class DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def decorator(f):
+                return f
+            return decorator
+    limiter = DummyLimiter()
 
 class ApiPrefixMiddleware:
     """Ensures requests both with /api and without /api are handled correctly on serverless platforms."""

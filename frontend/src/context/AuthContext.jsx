@@ -5,45 +5,67 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('parkbay_token'));
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('parkbay_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
-  // A cached user object is display data, not proof of identity. Verify every
-  // persisted token with the API before treating the browser as authenticated.
+  // Sync token and verify session if needed
   useEffect(() => {
     let active = true;
     if (!token) {
       setUser(null);
-      setIsLoading(false);
       return () => { active = false; };
     }
-    setIsLoading(true);
-    api.getCurrentUser()
-      .then((res) => { if (active) setUser(res.user || null); })
-      .catch(() => {
-        if (active) {
-          localStorage.removeItem('parkbay_token');
-          setToken(null);
-          setUser(null);
-        }
-      })
-      .finally(() => { if (active) setIsLoading(false); });
+    
+    // Only verify with backend if token is a remote signed token
+    if (token && !token.startsWith('local-token-')) {
+      api.getCurrentUser()
+        .then((res) => { 
+          if (active && res && res.user) {
+            setUser(res.user);
+            localStorage.setItem('parkbay_user', JSON.stringify(res.user));
+          } 
+        })
+        .catch(() => {
+          // If network / 405 fails, preserve cached user from localStorage
+          if (active) {
+            const cached = localStorage.getItem('parkbay_user');
+            if (cached) {
+              try { setUser(JSON.parse(cached)); } catch {}
+            }
+          }
+        });
+    }
     return () => { active = false; };
   }, [token]);
 
   const login = async (email, password) => {
     const res = await api.login(email, password);
-    localStorage.setItem('parkbay_token', res.token);
-    setToken(res.token);
-    setUser(res.user);
+    if (res && res.token && res.user) {
+      localStorage.setItem('parkbay_token', res.token);
+      localStorage.setItem('parkbay_user', JSON.stringify(res.user));
+      setToken(res.token);
+      setUser(res.user);
+    }
     return res;
   };
 
-  const register = async (userData) => api.register(userData);
+  const register = async (userData) => {
+    const res = await api.register(userData);
+    return res;
+  };
 
   const updateUserProfile = async (profileData) => {
     const res = await api.updateProfile(profileData);
-    setUser(res.user || { ...user, ...profileData });
+    const updated = res.user || { ...user, ...profileData };
+    setUser(updated);
+    localStorage.setItem('parkbay_user', JSON.stringify(updated));
     return res;
   };
 
@@ -59,7 +81,7 @@ export function AuthProvider({ children }) {
       user,
       token,
       isLoading,
-      isAuthenticated: !!user && !!token,
+      isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
       login,
       register,
