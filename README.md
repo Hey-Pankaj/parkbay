@@ -206,3 +206,12 @@ docker compose up -d --build
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+---
+
+### Off Campus – GrowthX
+
+Built by me and shared as part of the Off Campus
+student builder application.
+
+**Off Campus Code:** `3TUSYV`
